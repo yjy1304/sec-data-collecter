@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn clean:*)",
+      "Bash(mvn package:*)",
+      "Bash(java:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:www.sec.gov)",
+      "Bash(sqlite3:*)",
+      "Bash(chmod:*)",
+      "Bash(./db_info.sh)",
+      "Bash(lsof:*)",
+      "Bash(mvn exec:java:*)",
+      "Bash(unset http_proxy)",
+      "Bash(unset https_proxy)",
+      "Bash(cat:*)",
+      "Bash(mvn test:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
