@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.company.sec13f.parser.parser.Enhanced13FXMLParserTest
--------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.039 s - in com.company.sec13f.parser.parser.Enhanced13FXMLParserTest
