@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.sec13f.repository.mapper.FilingMapper">
+    
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="Filing">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="cik" property="cik" jdbcType="VARCHAR"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="filing_type" property="filingType" jdbcType="VARCHAR"/>
+        <result column="filing_date" property="filingDate" jdbcType="DATE"/>
+        <result column="accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
+        <result column="form_file" property="formFile" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    
+    <!-- 带Holdings关联的结果映射 -->
+    <resultMap id="WithHoldingsResultMap" type="Filing" extends="BaseResultMap">
+        <collection property="holdings" ofType="Holding"
+                   select="com.company.sec13f.repository.mapper.HoldingMapper.selectByFilingId"
+                   column="id"/>
+    </resultMap>
+    
+    <!-- 带Holdings数量统计的结果映射 -->
+    <resultMap id="WithHoldingsCountResultMap" type="Filing" extends="BaseResultMap">
+        <result column="holdings_count" property="holdingsCount" jdbcType="INTEGER"/>
+    </resultMap>
+    
+    <!-- 基础SQL片段 -->
+    <sql id="Base_Column_List">
+        id, cik, company_name, filing_type, filing_date, accession_number, form_file, created_at, updated_at
+    </sql>
+    
+    <!-- 插入 -->
+    <insert id="insert" parameterType="Filing" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO filings (
+            cik, company_name, filing_type, filing_date, 
+            accession_number, form_file, created_at, updated_at
+        ) VALUES (
+            #{cik}, #{companyName}, #{filingType}, #{filingDate}, 
+            #{accessionNumber}, #{formFile}, 
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+    
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM filings
+        WHERE id = #{id}
+    </select>
+    
+    <!-- 根据CIK查询 -->
+    <select id="selectByCik" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM filings
+        WHERE cik = #{cik}
+        ORDER BY filing_date DESC, form_file
+    </select>
+    
+    <!-- 根据Accession Number和Form File查询 -->
+    <select id="selectByAccessionAndFormFile" parameterType="map" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM filings
+        WHERE accession_number = #{accessionNumber} 
+        AND form_file = #{formFile}
+    </select>
+    
+    <!-- 根据Accession Number查询（返回第一个匹配项） -->
+    <select id="selectByAccessionNumber" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM filings
+        WHERE accession_number = #{accessionNumber}
+        LIMIT 1
+    </select>
+    
+    <!-- 查询所有Filing（带持仓数量统计） -->
+    <select id="selectAllWithHoldingsCount" resultMap="WithHoldingsCountResultMap">
+        SELECT f.*, COUNT(h.id) as holdings_count
+        FROM filings f
+        LEFT JOIN holdings h ON f.id = h.filing_id
+        GROUP BY f.id
+        ORDER BY f.filing_date DESC, f.form_file
+    </select>
+    
+    <!-- 更新 -->
+    <update id="update" parameterType="Filing">
+        UPDATE filings
+        SET company_name = #{companyName},
+            filing_type = #{filingType},
+            filing_date = #{filingDate},
+            form_file = #{formFile},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="Long">
+        DELETE FROM filings WHERE id = #{id}
+    </delete>
+    
+    <!-- 检查是否存在 -->
+    <select id="existsByAccessionNumber" parameterType="String" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM filings
+        WHERE accession_number = #{accessionNumber}
+    </select>
+    
+    <!-- 统计总数 -->
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM filings
+    </select>
+    
+    <!-- 根据CIK统计数量 -->
+    <select id="countByCik" parameterType="String" resultType="long">
+        SELECT COUNT(*) FROM filings WHERE cik = #{cik}
+    </select>
+    
+</mapper>

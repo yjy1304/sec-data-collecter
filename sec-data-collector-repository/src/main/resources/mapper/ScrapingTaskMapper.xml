@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.sec13f.repository.mapper.ScrapingTaskMapper">
+    
+    <resultMap id="BaseResultMap" type="ScrapingTask">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="task_id" property="taskId" jdbcType="VARCHAR"/>
+        <result column="cik" property="cik" jdbcType="VARCHAR"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="VARCHAR" 
+                typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result column="message" property="message" jdbcType="VARCHAR"/>
+        <result column="error_message" property="errorMessage" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP"/>
+        <result column="saved_filings" property="savedFilings" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id, task_id, cik, company_name, status, message, error_message, 
+        start_time, end_time, saved_filings, created_at, updated_at
+    </sql>
+    
+    <insert id="insert" parameterType="ScrapingTask" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO scraping_tasks (
+            task_id, cik, company_name, status, message, start_time, 
+            saved_filings, created_at, updated_at
+        ) VALUES (
+            #{taskId}, #{cik}, #{companyName}, #{status}, #{message}, #{startTime},
+            #{savedFilings}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+    
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks WHERE id = #{id}
+    </select>
+    
+    <select id="selectByTaskId" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks WHERE task_id = #{taskId}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectByStatus" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks 
+        WHERE status = #{status} ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectByCik" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks 
+        WHERE cik = #{cik} ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectFailedTasks" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks 
+        WHERE status = 'FAILED' ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectRunningTasks" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks 
+        WHERE status = 'RUNNING' ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectRecentTasks" parameterType="int" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM scraping_tasks 
+        ORDER BY created_at DESC LIMIT #{limit}
+    </select>
+    
+    <update id="update" parameterType="ScrapingTask">
+        UPDATE scraping_tasks SET
+            status = #{status},
+            message = #{message},
+            error_message = #{errorMessage},
+            end_time = #{endTime},
+            saved_filings = #{savedFilings},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE task_id = #{taskId}
+    </update>
+    
+    <delete id="deleteById" parameterType="Long">
+        DELETE FROM scraping_tasks WHERE id = #{id}
+    </delete>
+    
+    <delete id="deleteByTaskId" parameterType="String">
+        DELETE FROM scraping_tasks WHERE task_id = #{taskId}
+    </delete>
+    
+    <delete id="deleteCompletedTasks">
+        DELETE FROM scraping_tasks WHERE status = 'COMPLETED'
+    </delete>
+    
+    <delete id="deleteTasksOlderThan" parameterType="int">
+        DELETE FROM scraping_tasks 
+        WHERE created_at &lt; datetime('now', '-' || #{days} || ' days')
+    </delete>
+    
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM scraping_tasks
+    </select>
+    
+    <select id="countByStatus" parameterType="String" resultType="long">
+        SELECT COUNT(*) FROM scraping_tasks WHERE status = #{status}
+    </select>
+    
+    <select id="countTodayTasks" resultType="long">
+        SELECT COUNT(*) FROM scraping_tasks 
+        WHERE date(created_at) = date('now')
+    </select>
+    
+    <select id="existsByTaskId" parameterType="String" resultType="boolean">
+        SELECT COUNT(1) > 0 FROM scraping_tasks WHERE task_id = #{taskId}
+    </select>
+    
+</mapper>

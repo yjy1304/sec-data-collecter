@@ -1,0 +1,259 @@
+# SEC Data Collector .gitignore
+# Generated for comprehensive Java/Maven/Spring Boot project
+
+# =====================================
+# Maven Build Artifacts
+# =====================================
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# =====================================
+# Database Files (SQLite)
+# =====================================
+*.db
+*.sqlite
+*.sqlite3
+filings.db
+sec13f.db
+sec13f-parser.db
+data/*.db
+data/*.sqlite
+
+# =====================================
+# Log Files
+# =====================================
+*.log
+logs/
+data/*.log
+sec13f-parser.log
+sec-data-collector.log
+application.log
+spring.log
+
+# =====================================
+# IDE Files - IntelliJ IDEA
+# =====================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+
+# =====================================
+# IDE Files - Visual Studio Code
+# =====================================
+.vscode/
+*.code-workspace
+.history/
+
+# =====================================
+# IDE Files - Eclipse
+# =====================================
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+.project
+.externalToolBuilders/
+*.launch
+.pydevproject
+.cproject
+.autotools
+.factorypath
+.buildpath
+.classpath
+
+# =====================================
+# Operating System Files - macOS
+# =====================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# =====================================
+# Operating System Files - Windows
+# =====================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# =====================================
+# Operating System Files - Linux
+# =====================================
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =====================================
+# Java Compiled Classes & JARs
+# =====================================
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# =====================================
+# Spring Boot Specific
+# =====================================
+application-*.properties
+application-*.yml
+application-*.yaml
+!application.yml
+!application.properties
+!application-example.*
+
+# =====================================
+# Testing & Coverage
+# =====================================
+.sonar/
+sonar-project.properties
+coverage/
+*.lcov
+jacoco.exec
+*.exec
+
+# =====================================
+# Temporary & Cache Files
+# =====================================
+*.tmp
+*.temp
+*.cache
+.cache/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =====================================
+# Security & Sensitive Files
+# =====================================
+*.key
+*.pem
+*.p12
+*.jks
+*.keystore
+secrets.properties
+local.properties
+api-keys.properties
+credentials.json
+
+# =====================================
+# Project Specific - SEC Data Files
+# =====================================
+# Scraped data files (keep examples)
+data/scraped/
+data/cache/
+data/temp/
+!data/examples/
+!examples/
+
+# Processed filing files
+filings/
+holdings/
+reports/generated/
+
+# =====================================
+# Backup & Version Files
+# =====================================
+*.backup
+*.bak
+*.old
+*-backup.*
+*-old.*
+version.txt
+
+# =====================================
+# Docker & Container Files
+# =====================================
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# =====================================
+# Package Files
+# =====================================
+*.7z
+*.dmg
+*.gz
+*.iso
+*.tar
+*.zip
+
+# =====================================
+# Editor & Text Files
+# =====================================
+*.swp
+*.swo
+*~
+.vimrc.local
+.vimrc
+
+# =====================================
+# Gradle (if ever used)
+# =====================================
+.gradle
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# =====================================
+# Keep Important Files
+# =====================================
+!.gitkeep
+!README.md
+!CLAUDE.md
+!LICENSE
+!docs/**
+!examples/**
+!scripts/**
+!src/**
+!pom.xml

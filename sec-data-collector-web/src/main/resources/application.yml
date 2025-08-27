@@ -1,0 +1,73 @@
+# Spring Boot Configuration for SEC Data Collector
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+spring:
+  application:
+    name: sec-data-collector
+  
+  # Web MVC Configuration
+  mvc:
+    static-path-pattern: /**
+  web:
+    resources:
+      static-locations: classpath:/webapp/,classpath:/static/,classpath:/public/
+      cache:
+        period: 3600
+        cachecontrol:
+          max-age: 3600
+          cache-public: true
+  
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    
+  # Actuator Configuration
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info,metrics
+        base-path: /actuator
+    endpoint:
+      health:
+        show-details: when_authorized
+
+# Logging Configuration
+logging:
+  level:
+    com.company.sec13f: INFO
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/sec-data-collector.log
+    max-size: 10MB
+    max-history: 30
+
+# Custom Application Configuration
+sec-collector:
+  database:
+    url: jdbc:sqlite:sec13f.db
+    max-connections: 10
+  scraping:
+    thread-pool-size: 3
+    request-delay-ms: 100
+    max-retries: 3
+  scheduling:
+    enabled: true
+    auto-scraping-cron: "0 0 2 * * ?" # 每天凌晨2点执行
+    retry-failed-cron: "0 0 */6 * * ?" # 每6小时重试失败任务

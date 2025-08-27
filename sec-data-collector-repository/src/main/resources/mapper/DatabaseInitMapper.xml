@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="DatabaseInit">
+    
+    <!-- 创建Filing表 -->
+    <update id="createFilingTable">
+        CREATE TABLE IF NOT EXISTS filings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cik TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            filing_type TEXT NOT NULL,
+            filing_date DATE NOT NULL,
+            accession_number TEXT NOT NULL,
+            form_file TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(accession_number, form_file)
+        )
+    </update>
+    
+    <!-- 创建Holding表 -->
+    <update id="createHoldingTable">
+        CREATE TABLE IF NOT EXISTS holdings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filing_id INTEGER NOT NULL,
+            name_of_issuer TEXT NOT NULL,
+            cusip TEXT NOT NULL,
+            value DECIMAL(15,2),
+            shares BIGINT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE
+        )
+    </update>
+    
+    <!-- 创建ScrapingTask表 -->
+    <update id="createScrapingTaskTable">
+        CREATE TABLE IF NOT EXISTS scraping_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT NOT NULL UNIQUE,
+            cik TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            status TEXT NOT NULL,
+            message TEXT,
+            error_message TEXT,
+            start_time TIMESTAMP,
+            end_time TIMESTAMP,
+            saved_filings INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    </update>
+    
+</mapper>

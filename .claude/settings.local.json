@@ -15,7 +15,12 @@
       "Bash(unset http_proxy)",
       "Bash(unset https_proxy)",
       "Bash(cat:*)",
-      "Bash(mvn test:*)"
+      "Bash(mvn test:*)",
+      "Bash(mvn:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(find:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

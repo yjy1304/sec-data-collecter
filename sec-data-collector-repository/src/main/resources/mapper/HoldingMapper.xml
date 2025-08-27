@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.sec13f.repository.mapper.HoldingMapper">
+    
+    <resultMap id="BaseResultMap" type="Holding">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="filing_id" property="filingId" jdbcType="BIGINT"/>
+        <result column="name_of_issuer" property="nameOfIssuer" jdbcType="VARCHAR"/>
+        <result column="cusip" property="cusip" jdbcType="VARCHAR"/>
+        <result column="value" property="value" jdbcType="DECIMAL"/>
+        <result column="shares" property="shares" jdbcType="BIGINT"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    
+    <resultMap id="WithFilingResultMap" type="Holding" extends="BaseResultMap">
+        <association property="filing" javaType="Filing">
+            <id column="f_id" property="id" jdbcType="BIGINT"/>
+            <result column="f_cik" property="cik" jdbcType="VARCHAR"/>
+            <result column="f_company_name" property="companyName" jdbcType="VARCHAR"/>
+            <result column="f_filing_date" property="filingDate" jdbcType="DATE"/>
+            <result column="f_accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
+            <result column="f_form_file" property="formFile" jdbcType="VARCHAR"/>
+        </association>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id, filing_id, name_of_issuer, cusip, value, shares, created_at, updated_at
+    </sql>
+    
+    <insert id="insert" parameterType="Holding" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO holdings (filing_id, name_of_issuer, cusip, value, shares, created_at, updated_at)
+        VALUES (#{filingId}, #{nameOfIssuer}, #{cusip}, #{value}, #{shares}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+    
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO holdings (filing_id, name_of_issuer, cusip, value, shares, created_at, updated_at)
+        VALUES
+        <foreach collection="holdings" item="holding" separator=",">
+            (#{holding.filingId}, #{holding.nameOfIssuer}, #{holding.cusip}, 
+             #{holding.value}, #{holding.shares}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        </foreach>
+    </insert>
+    
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM holdings WHERE id = #{id}
+    </select>
+    
+    <select id="selectByFilingId" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM holdings 
+        WHERE filing_id = #{filingId} ORDER BY value DESC
+    </select>
+    
+    <select id="selectByCikWithFiling" parameterType="String" resultMap="WithFilingResultMap">
+        SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
+               f.filing_date as f_filing_date, f.accession_number as f_accession_number, f.form_file as f_form_file
+        FROM holdings h
+        JOIN filings f ON h.filing_id = f.id
+        WHERE f.cik = #{cik}
+        ORDER BY f.filing_date DESC, f.form_file, h.value DESC
+    </select>
+    
+    <select id="selectByCusip" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM holdings WHERE cusip = #{cusip}
+    </select>
+    
+    <select id="selectByIssuerName" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM holdings 
+        WHERE name_of_issuer LIKE '%' || #{nameOfIssuer} || '%'
+        ORDER BY value DESC
+    </select>
+    
+    <select id="selectTopHoldingsByCik" parameterType="map" resultMap="WithFilingResultMap">
+        SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
+               f.filing_date as f_filing_date, f.accession_number as f_accession_number, f.form_file as f_form_file
+        FROM holdings h
+        JOIN filings f ON h.filing_id = f.id
+        WHERE f.cik = #{cik}
+        ORDER BY h.value DESC
+        LIMIT #{limit}
+    </select>
+    
+    <update id="update" parameterType="Holding">
+        UPDATE holdings SET 
+            name_of_issuer = #{nameOfIssuer}, cusip = #{cusip}, 
+            value = #{value}, shares = #{shares}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById" parameterType="Long">
+        DELETE FROM holdings WHERE id = #{id}
+    </delete>
+    
+    <delete id="deleteByFilingId" parameterType="Long">
+        DELETE FROM holdings WHERE filing_id = #{filingId}
+    </delete>
+    
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM holdings
+    </select>
+    
+    <select id="countByFilingId" parameterType="Long" resultType="long">
+        SELECT COUNT(*) FROM holdings WHERE filing_id = #{filingId}
+    </select>
+    
+    <select id="countByCik" parameterType="String" resultType="long">
+        SELECT COUNT(h.*) FROM holdings h JOIN filings f ON h.filing_id = f.id WHERE f.cik = #{cik}
+    </select>
+    
+    <select id="sumValueByCik" parameterType="String" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(h.value), 0) FROM holdings h JOIN filings f ON h.filing_id = f.id WHERE f.cik = #{cik}
+    </select>
+    
+</mapper>
