@@ -13,11 +13,11 @@
                 typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
         <result column="message" property="message" jdbcType="VARCHAR"/>
         <result column="error_message" property="errorMessage" jdbcType="VARCHAR"/>
-        <result column="start_time" property="startTime" jdbcType="TIMESTAMP"/>
-        <result column="end_time" property="endTime" jdbcType="TIMESTAMP"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP" typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP" typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
         <result column="saved_filings" property="savedFilings" jdbcType="INTEGER"/>
-        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
-        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP" typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP" typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
     </resultMap>
     
     <sql id="Base_Column_List">

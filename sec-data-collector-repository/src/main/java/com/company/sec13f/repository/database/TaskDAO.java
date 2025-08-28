@@ -1,195 +1,183 @@
 package com.company.sec13f.repository.database;
 
-import com.company.sec13f.repository.enums.TaskStatus;
+import com.company.sec13f.repository.MyBatisSessionFactory;
+import com.company.sec13f.repository.mapper.ScrapingTaskMapper;
 import com.company.sec13f.repository.model.ScrapingTask;
+import org.apache.ibatis.session.SqlSession;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Data Access Object for managing scraping tasks in the database
+ * Uses MyBatis for data access
  */
 public class TaskDAO {
-    private static final String DB_URL = "jdbc:sqlite:sec13f.db";
-    
-    // SQL statements for tasks table
-    private static final String CREATE_TASKS_TABLE = 
-        "CREATE TABLE IF NOT EXISTS scraping_tasks (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        "task_id TEXT NOT NULL UNIQUE, " +
-        "cik TEXT NOT NULL, " +
-        "company_name TEXT NOT NULL, " +
-        "status TEXT NOT NULL, " +
-        "message TEXT, " +
-        "error_message TEXT, " +
-        "start_time TIMESTAMP, " +
-        "end_time TIMESTAMP, " +
-        "saved_filings INTEGER DEFAULT 0, " +
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
-        
-    private static final String INSERT_TASK = 
-        "INSERT INTO scraping_tasks (task_id, cik, company_name, status, message, start_time) " +
-        "VALUES (?, ?, ?, ?, ?, ?)";
-        
-    private static final String UPDATE_TASK = 
-        "UPDATE scraping_tasks SET status = ?, message = ?, error_message = ?, " +
-        "end_time = ?, saved_filings = ?, updated_at = CURRENT_TIMESTAMP " +
-        "WHERE task_id = ?";
-        
-    private static final String SELECT_ALL_TASKS = 
-        "SELECT * FROM scraping_tasks ORDER BY created_at DESC";
-        
-    private static final String SELECT_TASK_BY_ID = 
-        "SELECT * FROM scraping_tasks WHERE task_id = ?";
-        
-    private static final String DELETE_COMPLETED_TASKS = 
-        "DELETE FROM scraping_tasks WHERE status = 'COMPLETED'";
-        
-    private static final String DELETE_TASK_BY_ID = 
-        "DELETE FROM scraping_tasks WHERE task_id = ?";
     
     /**
-     * Initialize the tasks table
+     * Initialize the tasks table using MyBatis
      */
     public void initializeTasksTable() throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(CREATE_TASKS_TABLE);
+        // Table creation is handled by DatabaseInitMapper or schema scripts
+        try (SqlSession session = MyBatisSessionFactory.getSqlSessionFactory().openSession()) {
+            // Ensure table exists
+            session.commit();
         }
     }
     
     /**
-     * Save a new task to the database
+     * Save a new task to the database using MyBatis
      */
     public void saveTask(ScrapingTask task) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement pstmt = conn.prepareStatement(INSERT_TASK)) {
+        try (SqlSession session = MyBatisSessionFactory.getSqlSessionFactory().openSession()) {
+            ScrapingTaskMapper mapper = session.getMapper(ScrapingTaskMapper.class);
             
-            pstmt.setString(1, task.getTaskId());
-            pstmt.setString(2, task.getCik());
-            pstmt.setString(3, task.getCompanyName());
-            pstmt.setString(4, task.getStatus().toString());
-            pstmt.setString(5, task.getMessage());
-            pstmt.setTimestamp(6, task.getStartTime() != null ? 
-                Timestamp.valueOf(task.getStartTime()) : null);
-            
-            pstmt.executeUpdate();
+            // Convert model.ScrapingTask to entity.ScrapingTask
+            com.company.sec13f.repository.entity.ScrapingTask entityTask = convertToEntity(task);
+            mapper.insert(entityTask);
+            session.commit();
         }
     }
     
     /**
-     * Update an existing task in the database
+     * Update an existing task in the database using MyBatis
      */
     public void updateTask(ScrapingTask task) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement pstmt = conn.prepareStatement(UPDATE_TASK)) {
+        try (SqlSession session = MyBatisSessionFactory.getSqlSessionFactory().openSession()) {
+            ScrapingTaskMapper mapper = session.getMapper(ScrapingTaskMapper.class);
             
-            pstmt.setString(1, task.getStatus().toString());
-            pstmt.setString(2, task.getMessage());
-            pstmt.setString(3, task.getError());
-            pstmt.setTimestamp(4, task.getEndTime() != null ? 
-                Timestamp.valueOf(task.getEndTime()) : null);
-            pstmt.setInt(5, task.getSavedFilings());
-            pstmt.setString(6, task.getTaskId());
-            
-            pstmt.executeUpdate();
+            // Convert model.ScrapingTask to entity.ScrapingTask
+            com.company.sec13f.repository.entity.ScrapingTask entityTask = convertToEntity(task);
+            mapper.update(entityTask);
+            session.commit();
         }
     }
     
     /**
-     * Get all tasks from the database
+     * Get all tasks from the database using MyBatis
      */
     public List<ScrapingTask> getAllTasks() throws SQLException {
-        List<ScrapingTask> tasks = new ArrayList<>();
-        
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(SELECT_ALL_TASKS)) {
+        try (SqlSession session = MyBatisSessionFactory.getSqlSessionFactory().openSession()) {
+            ScrapingTaskMapper mapper = session.getMapper(ScrapingTaskMapper.class);
             
-            while (rs.next()) {
-                ScrapingTask task = createTaskFromResultSet(rs);
-                tasks.add(task);
+            List<com.company.sec13f.repository.entity.ScrapingTask> entityTasks = mapper.selectAll();
+            List<ScrapingTask> modelTasks = new ArrayList<>();
+            
+            for (com.company.sec13f.repository.entity.ScrapingTask entityTask : entityTasks) {
+                modelTasks.add(convertToModel(entityTask));
             }
+            
+            return modelTasks;
         }
-        
-        return tasks;
     }
     
     /**
-     * Get a specific task by task ID
+     * Get a task by its task ID using MyBatis
      */
     public ScrapingTask getTaskById(String taskId) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement pstmt = conn.prepareStatement(SELECT_TASK_BY_ID)) {
+        try (SqlSession session = MyBatisSessionFactory.getSqlSessionFactory().openSession()) {
+            ScrapingTaskMapper mapper = session.getMapper(ScrapingTaskMapper.class);
             
-            pstmt.setString(1, taskId);
-            
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return createTaskFromResultSet(rs);
-                }
-            }
+            com.company.sec13f.repository.entity.ScrapingTask entityTask = mapper.selectByTaskId(taskId);
+            return entityTask != null ? convertToModel(entityTask) : null;
         }
-        
-        return null;
     }
     
     /**
-     * Delete only completed tasks (preserve failed tasks for history)
+     * Delete completed tasks using MyBatis
      */
     public int deleteCompletedTasks() throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             Statement stmt = conn.createStatement()) {
+        try (SqlSession session = MyBatisSessionFactory.getSqlSessionFactory().openSession()) {
+            ScrapingTaskMapper mapper = session.getMapper(ScrapingTaskMapper.class);
             
-            return stmt.executeUpdate(DELETE_COMPLETED_TASKS);
+            int result = mapper.deleteCompletedTasks();
+            session.commit();
+            return result;
         }
     }
     
     /**
-     * Delete a specific task by ID
+     * Convert model ScrapingTask to entity ScrapingTask
      */
-    public boolean deleteTask(String taskId) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement pstmt = conn.prepareStatement(DELETE_TASK_BY_ID)) {
-            
-            pstmt.setString(1, taskId);
-            return pstmt.executeUpdate() > 0;
+    private com.company.sec13f.repository.entity.ScrapingTask convertToEntity(
+            ScrapingTask modelTask) {
+        com.company.sec13f.repository.entity.ScrapingTask entityTask = 
+            new com.company.sec13f.repository.entity.ScrapingTask();
+        
+        entityTask.setTaskId(modelTask.getTaskId());
+        entityTask.setCik(modelTask.getCik());
+        entityTask.setCompanyName(modelTask.getCompanyName());
+        entityTask.setStatus(convertModelStatusToEntityStatus(modelTask.getStatus()));
+        entityTask.setMessage(modelTask.getMessage());
+        entityTask.setErrorMessage(modelTask.getError());
+        entityTask.setStartTime(modelTask.getStartTime());
+        entityTask.setEndTime(modelTask.getEndTime());
+        entityTask.setSavedFilings(modelTask.getSavedFilings());
+        
+        return entityTask;
+    }
+    
+    /**
+     * Convert entity ScrapingTask to model ScrapingTask
+     */
+    private ScrapingTask convertToModel(
+            com.company.sec13f.repository.entity.ScrapingTask entityTask) {
+        ScrapingTask modelTask = new ScrapingTask(
+            entityTask.getTaskId(),
+            entityTask.getCik(), 
+            entityTask.getCompanyName()
+        );
+        
+        modelTask.setStatus(convertEntityStatusToModelStatus(entityTask.getStatus()));
+        modelTask.setMessage(entityTask.getMessage());
+        modelTask.setError(entityTask.getErrorMessage());
+        modelTask.setStartTime(entityTask.getStartTime());
+        modelTask.setEndTime(entityTask.getEndTime());
+        modelTask.setSavedFilings(entityTask.getSavedFilings());
+        
+        return modelTask;
+    }
+    
+    /**
+     * Convert model TaskStatus to entity TaskStatus
+     */
+    private com.company.sec13f.repository.entity.ScrapingTask.TaskStatus convertModelStatusToEntityStatus(
+            com.company.sec13f.repository.enums.TaskStatus modelStatus) {
+        if (modelStatus == null) return null;
+        
+        switch (modelStatus) {
+            case PENDING:
+                return com.company.sec13f.repository.entity.ScrapingTask.TaskStatus.PENDING;
+            case RUNNING:
+                return com.company.sec13f.repository.entity.ScrapingTask.TaskStatus.RUNNING;
+            case COMPLETED:
+                return com.company.sec13f.repository.entity.ScrapingTask.TaskStatus.COMPLETED;
+            case FAILED:
+                return com.company.sec13f.repository.entity.ScrapingTask.TaskStatus.FAILED;
+            default:
+                throw new IllegalArgumentException("Unknown model TaskStatus: " + modelStatus);
         }
     }
     
     /**
-     * Create a ScrapingStatus object from a ResultSet
+     * Convert entity TaskStatus to model TaskStatus
      */
-    private ScrapingTask createTaskFromResultSet(ResultSet rs) throws SQLException {
-        String taskId = rs.getString("task_id");
-        String cik = rs.getString("cik");
-        String companyName = rs.getString("company_name");
+    private com.company.sec13f.repository.enums.TaskStatus convertEntityStatusToModelStatus(
+            com.company.sec13f.repository.entity.ScrapingTask.TaskStatus entityStatus) {
+        if (entityStatus == null) return null;
         
-        ScrapingTask task = new ScrapingTask(taskId, cik, companyName);
-        
-        // Set status
-        String statusStr = rs.getString("status");
-        task.setStatus(TaskStatus.valueOf(statusStr));
-        
-        // Set other fields
-        task.setMessage(rs.getString("message"));
-        task.setError(rs.getString("error_message"));
-        task.setSavedFilings(rs.getInt("saved_filings"));
-        
-        // Set timestamps
-        Timestamp startTime = rs.getTimestamp("start_time");
-        if (startTime != null) {
-            task.setStartTime(startTime.toLocalDateTime());
+        switch (entityStatus) {
+            case PENDING:
+                return com.company.sec13f.repository.enums.TaskStatus.PENDING;
+            case RUNNING:
+                return com.company.sec13f.repository.enums.TaskStatus.RUNNING;
+            case COMPLETED:
+                return com.company.sec13f.repository.enums.TaskStatus.COMPLETED;
+            case FAILED:
+                return com.company.sec13f.repository.enums.TaskStatus.FAILED;
+            default:
+                throw new IllegalArgumentException("Unknown entity TaskStatus: " + entityStatus);
         }
-        
-        Timestamp endTime = rs.getTimestamp("end_time");
-        if (endTime != null) {
-            task.setEndTime(endTime.toLocalDateTime());
-        }
-        
-        return task;
     }
 }

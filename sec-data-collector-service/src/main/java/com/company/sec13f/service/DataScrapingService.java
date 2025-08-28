@@ -60,25 +60,31 @@ public class DataScrapingService {
      * 从数据库加载现有任务
      */
     private void loadExistingTasks() throws SQLException {
-        List<ScrapingTask> existingTasks = taskDAO.getAllTasks();
-        for (ScrapingTask task : existingTasks) {
-            // 只加载未完成的任务到内存中
-            if (task.getStatus() == TaskStatus.RUNNING || task.getStatus() == TaskStatus.PENDING) {
-                scrapingTasks.put(task.getTaskId(), task);
-                // 如果任务状态为RUNNING但服务重启了，将状态改为FAILED
-                if (task.getStatus() == TaskStatus.RUNNING) {
-                    task.setStatus(TaskStatus.FAILED);
-                    task.setEndTime(LocalDateTime.now());
-                    task.setMessage("任务因服务重启而中断");
-                    task.setError("Service restart interrupted task");
-                    saveTaskToDatabase(task);
+        try {
+            List<ScrapingTask> existingTasks = taskDAO.getAllTasks();
+            for (ScrapingTask task : existingTasks) {
+                // 只加载未完成的任务到内存中
+                if (task.getStatus() == TaskStatus.RUNNING || task.getStatus() == TaskStatus.PENDING) {
+                    scrapingTasks.put(task.getTaskId(), task);
+                    // 如果任务状态为RUNNING但服务重启了，将状态改为FAILED
+                    if (task.getStatus() == TaskStatus.RUNNING) {
+                        task.setStatus(TaskStatus.FAILED);
+                        task.setEndTime(LocalDateTime.now());
+                        task.setMessage("任务因服务重启而中断");
+                        task.setError("Service restart interrupted task");
+                        saveTaskToDatabase(task);
+                    }
+                } else {
+                    // 对于已完成的任务，也加载到内存中用于显示
+                    scrapingTasks.put(task.getTaskId(), task);
                 }
-            } else {
-                // 对于已完成的任务，也加载到内存中用于显示
-                scrapingTasks.put(task.getTaskId(), task);
             }
+            logger.info("Loaded " + existingTasks.size() + " existing tasks from database");
+        } catch (Exception e) {
+            // 如果加载任务失败（例如表不存在或数据损坏），记录错误但不中断服务启动
+            logger.error("Failed to load existing tasks from database, starting with empty task list: " + e.getMessage());
+            scrapingTasks.clear(); // 确保任务列表为空
         }
-        logger.info("Loaded " + existingTasks.size() + " existing tasks from database");
     }
     
     /**

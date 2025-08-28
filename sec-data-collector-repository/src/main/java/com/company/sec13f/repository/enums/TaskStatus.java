@@ -21,6 +21,6 @@ public enum TaskStatus {
     
     @Override
     public String toString() {
-        return description;
+        return name(); // 返回枚举名称而不是中文描述，确保数据库序列化/反序列化正常
     }
 }
