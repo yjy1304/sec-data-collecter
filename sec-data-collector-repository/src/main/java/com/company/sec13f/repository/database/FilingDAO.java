@@ -13,30 +13,38 @@ import java.util.List;
  * Data Access Object for interacting with the SEC 13F filings database
  */
 public class FilingDAO {
-    private static final String DB_URL = "jdbc:sqlite:sec13f.db";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/sec13f?useSSL=false&serverTimezone=UTC&characterEncoding=utf8";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "123456";
     private static final Logger logger = Logger.getInstance();
     
     // SQL statements
     private static final String CREATE_FILING_TABLE = 
         "CREATE TABLE IF NOT EXISTS filings (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        "cik TEXT NOT NULL, " +
-        "company_name TEXT NOT NULL, " +
-        "filing_type TEXT NOT NULL, " +
+        "id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
+        "cik VARCHAR(50) NOT NULL, " +
+        "company_name VARCHAR(500) NOT NULL, " +
+        "filing_type VARCHAR(50) NOT NULL, " +
         "filing_date DATE NOT NULL, " +
-        "accession_number TEXT NOT NULL, " +
-        "form_file TEXT NOT NULL, " +
-        "UNIQUE(accession_number, form_file))";
+        "accession_number VARCHAR(100) NOT NULL, " +
+        "form_file VARCHAR(200) NOT NULL, " +
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+        "UNIQUE KEY unique_filing (accession_number, form_file)) " +
+        "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
         
     private static final String CREATE_HOLDING_TABLE = 
         "CREATE TABLE IF NOT EXISTS holdings (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        "filing_id INTEGER NOT NULL, " +
-        "name_of_issuer TEXT NOT NULL, " +
-        "cusip TEXT NOT NULL, " +
+        "id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
+        "filing_id BIGINT NOT NULL, " +
+        "name_of_issuer VARCHAR(500) NOT NULL, " +
+        "cusip VARCHAR(20) NOT NULL, " +
         "value DECIMAL(15,2), " +
         "shares BIGINT, " +
-        "FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE)";
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+        "FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE) " +
+        "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
         
     private static final String INSERT_FILING = 
         "INSERT INTO filings (cik, company_name, filing_type, filing_date, accession_number, form_file) " +
@@ -67,11 +75,10 @@ public class FilingDAO {
      * @throws SQLException If there's an error creating the tables
      */
     public void initializeDatabase() throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              Statement stmt = conn.createStatement()) {
             
-            // Enable foreign key constraints
-            stmt.execute("PRAGMA foreign_keys = ON");
+            // MySQL has foreign key constraints enabled by default
             
             // Create tables
             stmt.execute(CREATE_FILING_TABLE);
@@ -89,7 +96,7 @@ public class FilingDAO {
     public long saveFiling(Filing filing) throws SQLException {
         logger.info("📄 Saving filing to database - CIK: " + filing.getCik() + ", Accession: " + filing.getAccessionNumber());
         
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
             conn.setAutoCommit(false);
             
             try {
@@ -166,7 +173,7 @@ public class FilingDAO {
     public List<Filing> getFilingsByCik(String cik) throws SQLException {
         List<Filing> filings = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(SELECT_FILINGS_BY_CIK)) {
             
             pstmt.setString(1, cik);
@@ -203,7 +210,7 @@ public class FilingDAO {
     public List<Holding> getHoldingsByFilingId(long filingId) throws SQLException {
         List<Holding> holdings = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(SELECT_HOLDINGS_BY_FILING_ID)) {
             
             pstmt.setLong(1, filingId);
@@ -233,7 +240,7 @@ public class FilingDAO {
     public List<HoldingWithFilingInfo> getAllHoldingsByCik(String cik) throws SQLException {
         List<HoldingWithFilingInfo> holdings = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(SELECT_ALL_HOLDINGS_BY_CIK)) {
             
             pstmt.setString(1, cik);
@@ -275,7 +282,7 @@ public class FilingDAO {
                     "LEFT JOIN holdings h ON f.id = h.filing_id " +
                     "GROUP BY f.id ORDER BY f.filing_date DESC, f.form_file";
         
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -314,7 +321,7 @@ public class FilingDAO {
      * @throws SQLException If there's an error retrieving the filing ID
      */
     public long getFilingIdByAccessionNumber(String accessionNumber, String formFile) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(SELECT_FILING_ID_BY_ACCESSION)) {
             
             pstmt.setString(1, accessionNumber);
@@ -339,7 +346,7 @@ public class FilingDAO {
      */
     public long getFilingIdByAccessionNumber(String accessionNumber) throws SQLException {
         String sql = "SELECT id FROM filings WHERE accession_number = ? LIMIT 1";
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, accessionNumber);

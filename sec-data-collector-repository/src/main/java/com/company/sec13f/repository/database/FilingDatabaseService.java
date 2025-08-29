@@ -11,7 +11,9 @@ import java.util.List;
  * Service class for database operations related to SEC 13F filings
  */
 public class FilingDatabaseService {
-    private static final String DB_URL = "jdbc:sqlite:sec13f.db";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/sec13f?useSSL=false&serverTimezone=UTC&characterEncoding=utf8";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "123456";
     
     /**
      * Saves a filing and its holdings to the database
@@ -20,7 +22,7 @@ public class FilingDatabaseService {
      * @throws SQLException If an error occurs during the database operation
      */
     public void saveFiling(Filing filing) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
             conn.setAutoCommit(false);
             
             try {
@@ -114,7 +116,7 @@ public class FilingDatabaseService {
         String filingSql = "SELECT * FROM filings WHERE cik = ? ORDER BY filing_date DESC LIMIT 1";
         String holdingsSql = "SELECT * FROM holdings WHERE filing_id = ?";
         
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement filingStmt = conn.prepareStatement(filingSql)) {
             
             filingStmt.setString(1, cik);
@@ -168,30 +170,35 @@ public class FilingDatabaseService {
      * @throws SQLException If an error occurs during the database operation
      */
     public void initializeDatabase() throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              Statement stmt = conn.createStatement()) {
             
-            // Enable foreign key constraints
-            stmt.execute("PRAGMA foreign_keys = ON");
+            // MySQL has foreign key constraints enabled by default
             
             // Create filings table
             stmt.execute("CREATE TABLE IF NOT EXISTS filings (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "cik TEXT NOT NULL, " +
-                    "company_name TEXT NOT NULL, " +
-                    "filing_type TEXT NOT NULL, " +
+                    "id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
+                    "cik VARCHAR(50) NOT NULL, " +
+                    "company_name VARCHAR(500) NOT NULL, " +
+                    "filing_type VARCHAR(50) NOT NULL, " +
                     "filing_date DATE, " +
-                    "accession_number TEXT NOT NULL UNIQUE)");
+                    "accession_number VARCHAR(100) NOT NULL UNIQUE, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
             
             // Create holdings table
             stmt.execute("CREATE TABLE IF NOT EXISTS holdings (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "filing_id INTEGER NOT NULL, " +
-                    "name_of_issuer TEXT NOT NULL, " +
-                    "cusip TEXT NOT NULL, " +
+                    "id BIGINT PRIMARY KEY AUTO_INCREMENT, " +
+                    "filing_id BIGINT NOT NULL, " +
+                    "name_of_issuer VARCHAR(500) NOT NULL, " +
+                    "cusip VARCHAR(20) NOT NULL, " +
                     "value DECIMAL(15,2), " +
                     "shares BIGINT, " +
-                    "FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE)");
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
             
             System.out.println("Database initialized successfully.");
         }

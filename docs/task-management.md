@@ -2,24 +2,23 @@
 
 ## 概述
 
-本项目采用基于数据库的任务驱动架构，通过`scraping_tasks`表管理所有SEC 13F数据抓取任务的生命周期。该系统支持异步任务执行、状态跟踪、失败重试和任务持久化。
+本项目采用基于数据库的任务驱动架构，通过`tasks`表管理所有任务的生命周期。该系统支持异步任务执行、状态跟踪、失败重试和任务持久化。
 
 ## 数据库模型结构
 
-### scraping_tasks表结构
+### tasks表结构
 
 ```sql
-CREATE TABLE IF NOT EXISTS scraping_tasks (
+CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,     -- 主键ID
-    task_id TEXT NOT NULL UNIQUE,            -- 唯一任务标识符
-    cik TEXT NOT NULL,                       -- SEC公司识别代码
-    company_name TEXT NOT NULL,              -- 公司名称
+    task_id TEXT,                           -- 当前任务id
+    task_type TEXT NOT NULL,              -- 任务类型
     status TEXT NOT NULL,                    -- 任务状态
-    message TEXT,                           -- 状态消息
-    error_message TEXT,                     -- 错误信息
+    message TEXT,                           -- 当前任务执行结果信息
+    retry_times INTEGER,                   -- 重试次数
     start_time TIMESTAMP,                   -- 任务开始时间
+    next_execute_time TIMESTAMP,                   -- 下次执行时间
     end_time TIMESTAMP,                     -- 任务结束时间
-    saved_filings INTEGER DEFAULT 0,       -- 已保存的文件数量
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 创建时间
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- 更新时间
 );
@@ -27,20 +26,19 @@ CREATE TABLE IF NOT EXISTS scraping_tasks (
 
 ### 字段说明
 
-| 字段名 | 类型 | 说明 | 示例 |
-|--------|------|------|------|
-| `id` | INTEGER | 数据库自增主键 | 1, 2, 3... |
-| `task_id` | TEXT | 唯一任务标识符，格式为"scrape_{cik}_{timestamp}" | "scrape_0001067983_20250825014925" |
-| `cik` | TEXT | SEC公司识别代码，10位数字格式 | "0001067983" |
-| `company_name` | TEXT | 公司名称 | "Berkshire Hathaway Inc" |
-| `status` | TEXT | 任务状态枚举值 | "PENDING", "RUNNING", "COMPLETED", "FAILED" |
-| `message` | TEXT | 当前任务状态的描述信息 | "找到 44 个13F文件", "已保存 5/10 个文件" |
-| `error_message` | TEXT | 错误详情（仅在失败时填充） | "SEC request failed with status: 503" |
-| `start_time` | TIMESTAMP | 任务实际开始执行的时间 | "2025-08-25 01:49:25.855" |
-| `end_time` | TIMESTAMP | 任务完成或失败的时间 | "2025-08-25 01:52:30.123" |
-| `saved_filings` | INTEGER | 成功保存到数据库的文件数量 | 5 |
-| `created_at` | TIMESTAMP | 任务创建时间（系统自动设置） | "2025-08-25 01:49:20.000" |
-| `updated_at` | TIMESTAMP | 最后更新时间（系统自动维护） | "2025-08-25 01:52:30.123" |
+| 字段名                 | 类型 | 说明                   | 示例                                          |
+|---------------------|------|----------------------|---------------------------------------------|
+| `id`                | INTEGER | 数据库自增主键              | 1, 2, 3...                                  |
+| `task_id`            | TEXT | 当前任务id,一般使用UUID      | "123456"                                    |
+| `status`            | TEXT | 任务状态枚举值,参考TaskStatus | "PENDING", "RUNNING", "COMPLETED", "FAILED" |
+| `task_type`         | TEXT | 任务类型枚举值,参考TaskType   | "SCRAP_HOLDING", "SCRAP_FINANCIAL_REPORT"   |
+| `message`           | TEXT | 当前任务执行结果信息           | "找到 44 个13F文件", "已保存 5/10 个文件"              |
+| `retry_times`       | INTEGER | 重试次数                 | 0, 1, 2                                     |
+| `next_execute_time` | TIMESTAMP | 下次执行时间               | "2025-08-25 01:49:25.855"                   |
+| `start_time`        | TIMESTAMP | 任务实际开始执行的时间          | "2025-08-25 01:49:25.855"                   |
+| `end_time`          | TIMESTAMP | 任务完成或失败的时间           | "2025-08-25 01:52:30.123"                   |
+| `created_at`        | TIMESTAMP | 任务创建时间（系统自动设置）       | "2025-08-25 01:49:20.000"                   |
+| `updated_at`        | TIMESTAMP | 最后更新时间（系统自动维护）       | "2025-08-25 01:52:30.123"                   |
 
 ## 任务状态管理
 
@@ -49,62 +47,65 @@ CREATE TABLE IF NOT EXISTS scraping_tasks (
 ```java
 public enum TaskStatus {
     PENDING,    // 等待执行
-    RUNNING,    // 正在执行
+    RETRY,    // 正在执行
     COMPLETED,  // 执行成功
     FAILED      // 执行失败
+}
+
+public enum TaskType {
+    SCRAP_HOLDING,    // 抓取持仓
+    SCRAP_FINANCIAL_REPORT    // 抓取财报
 }
 ```
 
 ### 状态转换流程
 
-```
-PENDING → RUNNING → COMPLETED  (成功路径)
-          ↓
-        FAILED                 (失败路径)
-```
 
 ### 状态详细说明
 
 1. **PENDING（等待）**
    - 任务刚创建，等待执行
    - message: "任务已创建"
-   - 此状态下任务在队列中等待线程池调度
+   - retry_times置为初始值0
+   - 此状态下任务在队列中等待TaskService.handleTask(ScrapingTask task)调度执行
 
-2. **RUNNING（运行中）**
-   - 任务正在执行中
-   - start_time被设置
-   - message会动态更新进度，如："找到 44 个13F文件"、"已保存 3/10 个文件"
+2. **RETRY（等待重试）**
+   - 任务执行失败了，需要重试
+   - retry_times被设置+1
+   - message会上一次失败信息，比如"访问sec服务失败"
 
 3. **COMPLETED（已完成）**
    - 任务成功执行完毕
    - end_time被设置
-   - saved_filings记录实际保存的文件数量
    - message: "任务完成，共保存 X 个文件"
 
 4. **FAILED（失败）**
-   - 任务执行过程中出现异常
+   - 任务执行过程中出现并且异常超过重试次数
    - end_time被设置
-   - error_message记录具体错误信息
-   - message描述失败原因
+   - message记录具体错误信息
 
 ## 任务框架架构
 
 ### 核心组件
 
-#### 1. DataScrapingService
-- **职责**: 任务执行引擎，负责实际的数据抓取工作
-- **特性**:
-  - 使用CompletableFuture实现异步执行
-  - 线程池大小限制为3，遵守SEC API频率限制
-  - 内存中维护任务状态缓存(`ConcurrentHashMap`)
-  - 与数据库同步任务状态
+#### 1. TaskService
+- **职责**: 任务服务，负责任务的调度执行，调用不同taskType对应的任务插件执行任务并会写执行结果
+- **核心方法**:
+    - `handleTask(TaskDO taskDO)`: 根据任务类型获取TaskProcessPlugin的实现类并执行任务
+    - `scheduleTask(TaskDO taskDO)`: 根据任务状态PENDING/RETRY状态和next_execute_time捞取到期待并调用handleTask执行任务
+- **调度策略**:
+    - **每日数据收集**: `@Scheduled(cron = "0 10/* * * * ?")` - 对于scheduleTask()注解该任务，每10分钟执行一次
+
+
+#### 2. TaskProcessPlugin
+- **职责**: 任务服务，负责任务的调度执行，调用不同taskType对应的任务插件执行任务并会写执行结果
+- **核心方法**:
+    - `TaskResult handleTask()`: 执行任务
+    - `TaskType taskType()`: 返回任务类型
 
 #### 2. ScheduledScrapingService
 - **职责**: 定时任务调度器，基于Spring Scheduler框架
-- **调度策略**:
-  - **每日数据收集**: `@Scheduled(cron = "0 0 2 * * ?")` - 每天凌晨2点执行
-  - **失败重试**: `@Scheduled(fixedRate = 3600000)` - 每小时重试失败的任务
-- **重试机制**: 使用Spring Retry，最大重试3次，指数退避策略
+
 
 #### 3. TaskDAO
 - **职责**: 数据访问层，负责任务的数据库持久化
@@ -114,122 +115,22 @@ PENDING → RUNNING → COMPLETED  (成功路径)
   - `getAllTasks()`: 获取所有任务
   - `getTaskById()`: 根据ID获取任务
 
-### 任务生命周期管理
-
-#### 1. 任务创建
-```java
-// 生成唯一任务ID
-String taskId = generateTaskId(cik); // 格式: "scrape_{cik}_{timestamp}"
-
-// 创建任务状态对象
-ScrapingStatus status = new ScrapingStatus(taskId, cik, companyName);
-status.setStatus(TaskStatus.PENDING);
-status.setMessage("任务已创建");
-
-// 持久化到数据库
-taskDAO.saveTask(status);
-```
-
-#### 2. 任务执行
-```java
-CompletableFuture.supplyAsync(() -> {
-    // 更新状态为运行中
-    status.setStatus(TaskStatus.RUNNING);
-    status.setStartTime(LocalDateTime.now());
-    taskDAO.updateTask(status);
-    
-    // 执行实际业务逻辑
-    List<Filing> filings = scraper.getCompanyFilings(cik);
-    
-    // 动态更新进度
-    status.setMessage("找到 " + filings.size() + " 个13F文件");
-    taskDAO.updateTask(status);
-    
-    // ... 处理文件 ...
-    
-}, executorService);
-```
-
-#### 3. 任务完成处理
-```java
-// 成功完成
-status.setStatus(TaskStatus.COMPLETED);
-status.setEndTime(LocalDateTime.now());
-status.setSavedFilings(savedCount);
-status.setMessage("任务完成，共保存 " + savedCount + " 个文件");
-
-// 异常处理
-} catch (Exception e) {
-    status.setStatus(TaskStatus.FAILED);
-    status.setEndTime(LocalDateTime.now());
-    status.setError(e.getMessage());
-    status.setMessage("任务失败: " + e.getMessage());
-}
-taskDAO.updateTask(status);
-```
-
-### 服务重启恢复机制
-
-系统启动时会自动恢复中断的任务：
-
-```java
-private void loadExistingTasks() throws SQLException {
-    List<ScrapingStatus> existingTasks = taskDAO.getAllTasks();
-    for (ScrapingStatus task : existingTasks) {
-        if (task.getStatus() == TaskStatus.RUNNING) {
-            // 将因服务重启中断的任务标记为失败
-            task.setStatus(TaskStatus.FAILED);
-            task.setEndTime(LocalDateTime.now());
-            task.setMessage("任务因服务重启而中断");
-            task.setError("Service restart interrupted task");
-            taskDAO.updateTask(task);
-        }
-    }
-}
-```
-
 ## API接口
 
 ### REST API端点
+- `GET /api/tasks/status/{taskId}` - 查询任务状态
+- `GET /api/tasks` - 获取所有任务列表
 
-- `POST /api/scraping/start` - 启动新的抓取任务
-- `GET /api/scraping/status/{taskId}` - 查询任务状态
-- `GET /api/scraping/tasks` - 获取所有任务列表
-- `POST /api/scheduling/trigger-collection` - 手动触发数据收集
-- `POST /api/scheduling/trigger-retry` - 手动触发失败重试
 
 ### 使用示例
 
 ```bash
-# 启动抓取任务
-curl -X POST "http://localhost:8080/api/scraping/start" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "cik=0001067983&companyName=Berkshire+Hathaway+Inc"
 
 # 查询任务状态
 curl "http://localhost:8080/api/scraping/status/scrape_0001067983_20250825014925"
 
 # 获取所有任务
 curl "http://localhost:8080/api/scraping/tasks"
-```
-
-## 监控和维护
-
-### 任务监控指标
-
-1. **执行时间**: 通过`getDurationSeconds()`方法计算任务执行耗时
-2. **成功率**: 统计COMPLETED vs FAILED的比例
-3. **数据产出**: 通过`saved_filings`字段跟踪实际保存的数据量
-4. **系统负载**: 监控线程池使用情况和内存中任务缓存大小
-
-### 数据清理策略
-
-```sql
--- 清理已完成的历史任务（可根据需要定期执行）
-DELETE FROM scraping_tasks WHERE status = 'COMPLETED' AND created_at < datetime('now', '-30 days');
-
--- 清理失败且不再需要的任务
-DELETE FROM scraping_tasks WHERE status = 'FAILED' AND created_at < datetime('now', '-7 days');
 ```
 
 ### 故障排查
@@ -245,8 +146,8 @@ DELETE FROM scraping_tasks WHERE status = 'FAILED' AND created_at < datetime('no
 - **任务队列**: 无界队列，防止任务丢失
 
 ### 调度配置
-- **每日收集时间**: 凌晨2:00（避开业务高峰期）
-- **重试间隔**: 每小时检查一次失败任务
+- **每日收集时间**: 每10分钟调度一次
+- **重试间隔**: 目前写死为1小时
 - **公司间延迟**: 5秒（减少API压力）
 
 ### 重试策略
@@ -256,7 +157,7 @@ DELETE FROM scraping_tasks WHERE status = 'FAILED' AND created_at < datetime('no
 
 ## 最佳实践
 
-1. **任务ID设计**: 使用时间戳确保唯一性，便于排查问题
+1. **任务ID设计**: 使用UUID即可
 2. **状态更新频率**: 在关键节点及时更新状态，便于监控
 3. **错误信息**: 记录详细的错误堆栈，方便故障诊断
 4. **资源管理**: 及时关闭HTTP连接，避免资源泄漏

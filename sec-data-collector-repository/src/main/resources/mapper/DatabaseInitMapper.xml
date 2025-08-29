@@ -7,50 +7,82 @@
     <!-- 创建Filing表 -->
     <update id="createFilingTable">
         CREATE TABLE IF NOT EXISTS filings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cik TEXT NOT NULL,
-            company_name TEXT NOT NULL,
-            filing_type TEXT NOT NULL,
+            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            cik VARCHAR(50) NOT NULL,
+            company_name VARCHAR(500) NOT NULL,
+            filing_type VARCHAR(50) NOT NULL,
             filing_date DATE NOT NULL,
-            accession_number TEXT NOT NULL,
-            form_file TEXT NOT NULL,
+            accession_number VARCHAR(100) NOT NULL,
+            form_file VARCHAR(200) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(accession_number, form_file)
-        )
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_filing (accession_number, form_file),
+            INDEX idx_cik (cik),
+            INDEX idx_filing_date (filing_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     </update>
     
     <!-- 创建Holding表 -->
     <update id="createHoldingTable">
         CREATE TABLE IF NOT EXISTS holdings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filing_id INTEGER NOT NULL,
-            name_of_issuer TEXT NOT NULL,
-            cusip TEXT NOT NULL,
+            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            filing_id BIGINT NOT NULL,
+            name_of_issuer VARCHAR(500) NOT NULL,
+            cusip VARCHAR(20) NOT NULL,
             value DECIMAL(15,2),
             shares BIGINT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE
-        )
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (filing_id) REFERENCES filings (id) ON DELETE CASCADE,
+            INDEX idx_filing_id (filing_id),
+            INDEX idx_cusip (cusip),
+            INDEX idx_name_of_issuer (name_of_issuer(100))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     </update>
     
     <!-- 创建ScrapingTask表 -->
     <update id="createScrapingTaskTable">
         CREATE TABLE IF NOT EXISTS scraping_tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task_id TEXT NOT NULL UNIQUE,
-            cik TEXT NOT NULL,
-            company_name TEXT NOT NULL,
-            status TEXT NOT NULL,
+            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            task_id VARCHAR(100) NOT NULL UNIQUE,
+            cik VARCHAR(50) NOT NULL,
+            company_name VARCHAR(500) NOT NULL,
+            status VARCHAR(50) NOT NULL,
             message TEXT,
             error_message TEXT,
-            start_time TIMESTAMP,
-            end_time TIMESTAMP,
-            saved_filings INTEGER DEFAULT 0,
+            start_time TIMESTAMP NULL,
+            end_time TIMESTAMP NULL,
+            saved_filings INT DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_task_id (task_id),
+            INDEX idx_cik (cik),
+            INDEX idx_status (status),
+            INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    </update>
+    
+    <!-- 创建通用Tasks表 -->
+    <update id="createTasksTable">
+        CREATE TABLE IF NOT EXISTS tasks (
+            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            task_id VARCHAR(100) NOT NULL UNIQUE,
+            task_type VARCHAR(50) NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            message TEXT,
+            task_parameters TEXT,
+            retry_times INT DEFAULT 0,
+            start_time TIMESTAMP NULL,
+            next_execute_time TIMESTAMP NULL,
+            end_time TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_task_id (task_id),
+            INDEX idx_task_type (task_type),
+            INDEX idx_status (status),
+            INDEX idx_next_execute_time (next_execute_time),
+            INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     </update>
     
 </mapper>

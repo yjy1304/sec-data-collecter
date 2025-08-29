@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.sec13f.repository.mapper.TaskMapper">
+    
+    <resultMap id="BaseResultMap" type="Task">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="task_id" property="taskId" jdbcType="VARCHAR"/>
+        <result column="task_type" property="taskType" jdbcType="VARCHAR" 
+                typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result column="status" property="status" jdbcType="VARCHAR" 
+                typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result column="message" property="message" jdbcType="VARCHAR"/>
+        <result column="task_parameters" property="taskParameters" jdbcType="VARCHAR"/>
+        <result column="retry_times" property="retryTimes" jdbcType="INTEGER"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP" 
+                typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+        <result column="next_execute_time" property="nextExecuteTime" jdbcType="TIMESTAMP" 
+                typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP" 
+                typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP" 
+                typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP" 
+                typeHandler="com.company.sec13f.repository.typehandler.NullSafeLocalDateTimeTypeHandler"/>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id, task_id, task_type, status, message, task_parameters, retry_times, 
+        start_time, next_execute_time, end_time, created_at, updated_at
+    </sql>
+    
+    <insert id="insert" parameterType="Task" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tasks (
+            task_id, task_type, status, message, task_parameters, retry_times, 
+            start_time, next_execute_time, end_time, created_at, updated_at
+        ) VALUES (
+            #{taskId}, #{taskType}, #{status}, #{message}, #{taskParameters}, #{retryTimes},
+            #{startTime}, #{nextExecuteTime}, #{endTime}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+    
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks WHERE id = #{id}
+    </select>
+    
+    <select id="selectByTaskId" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks WHERE task_id = #{taskId}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectByStatus" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks 
+        WHERE status = #{status} ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectByTaskType" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks 
+        WHERE task_type = #{taskType} ORDER BY created_at DESC
+    </select>
+    
+    <select id="selectPendingTasks" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks 
+        WHERE status = 'PENDING' ORDER BY created_at ASC
+    </select>
+    
+    <select id="selectRetryTasksReadyForExecution" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM tasks 
+        WHERE status = 'RETRY' AND next_execute_time &lt;= #{currentTime}
+        ORDER BY next_execute_time ASC
+    </select>
+    
+    <update id="update" parameterType="Task">
+        UPDATE tasks SET
+            status = #{status},
+            message = #{message},
+            task_parameters = #{taskParameters},
+            retry_times = #{retryTimes},
+            start_time = #{startTime},
+            next_execute_time = #{nextExecuteTime},
+            end_time = #{endTime},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE task_id = #{taskId}
+    </update>
+    
+    <delete id="deleteById" parameterType="Long">
+        DELETE FROM tasks WHERE id = #{id}
+    </delete>
+    
+    <delete id="deleteByTaskId" parameterType="String">
+        DELETE FROM tasks WHERE task_id = #{taskId}
+    </delete>
+    
+    <delete id="deleteCompletedTasks">
+        DELETE FROM tasks WHERE status = 'COMPLETED'
+    </delete>
+    
+    <delete id="deleteTasksOlderThan" parameterType="int">
+        DELETE FROM tasks 
+        WHERE created_at &lt; DATE_SUB(NOW(), INTERVAL #{days} DAY)
+    </delete>
+    
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM tasks
+    </select>
+    
+    <select id="countByStatus" parameterType="String" resultType="long">
+        SELECT COUNT(*) FROM tasks WHERE status = #{status}
+    </select>
+    
+    <select id="existsByTaskId" parameterType="String" resultType="boolean">
+        SELECT COUNT(1) > 0 FROM tasks WHERE task_id = #{taskId}
+    </select>
+    
+</mapper>

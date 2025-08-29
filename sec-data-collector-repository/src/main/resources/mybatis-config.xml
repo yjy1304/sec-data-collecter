@@ -29,9 +29,10 @@
         <environment id="development">
             <transactionManager type="JDBC"/>
             <dataSource type="POOLED">
-                <property name="driver" value="org.sqlite.JDBC"/>
-                <property name="url" value="jdbc:sqlite:sec13f.db"/>
-                <!-- SQLite不需要用户名和密码 -->
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/sec13f?useSSL=false&amp;serverTimezone=UTC&amp;characterEncoding=utf8"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123456"/>
             </dataSource>
         </environment>
     </environments>
@@ -42,5 +43,6 @@
         <mapper resource="mapper/FilingMapper.xml"/>
         <mapper resource="mapper/HoldingMapper.xml"/>
         <mapper resource="mapper/ScrapingTaskMapper.xml"/>
+        <mapper resource="mapper/TaskMapper.xml"/>
     </mappers>
 </configuration>

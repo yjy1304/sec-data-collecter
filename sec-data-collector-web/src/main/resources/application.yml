@@ -61,7 +61,9 @@ logging:
 # Custom Application Configuration
 sec-collector:
   database:
-    url: jdbc:sqlite:sec13f.db
+    url: jdbc:mysql://localhost:3306/sec13f?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    username: root
+    password: "123456"
     max-connections: 10
   scraping:
     thread-pool-size: 3
