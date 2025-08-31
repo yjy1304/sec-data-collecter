@@ -61,8 +61,6 @@ public class MyBatisSessionFactory {
             session.update("DatabaseInit.createFilingTable");
             // 创建Holding表  
             session.update("DatabaseInit.createHoldingTable");
-            // 创建ScrapingTask表
-            session.update("DatabaseInit.createScrapingTaskTable");
             
             logger.info("Database tables initialized successfully");
         } catch (Exception e) {

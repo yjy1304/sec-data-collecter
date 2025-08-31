@@ -12,6 +12,19 @@ spring:
   application:
     name: sec-data-collector
   
+  # DataSource Configuration
+  datasource:
+    url: jdbc:mysql://localhost:3306/sec13f?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    username: root
+    password: "123456"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
   # Web MVC Configuration
   mvc:
     static-path-pattern: /**
@@ -32,6 +45,17 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
     default-property-inclusion: non_null
+
+# MyBatis Configuration
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.company.sec13f.repository.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    use-generated-keys: true
+    default-fetch-size: 100
+    default-statement-timeout: 30
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
     
   # Actuator Configuration
   management:

@@ -20,7 +20,8 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(find:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(mysql:*)"
     ],
     "deny": [],
     "ask": []

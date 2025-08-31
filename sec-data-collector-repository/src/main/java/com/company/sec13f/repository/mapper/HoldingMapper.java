@@ -114,4 +114,32 @@ public interface HoldingMapper {
      * @return 总价值
      */
     java.math.BigDecimal sumValueByCik(@Param("cik") String cik);
+    
+    /**
+     * 根据CIK查询持仓（带Fil ing信息和筛选条件）
+     * @param cik 公司CIK
+     * @param minValue 最小价值筛选
+     * @param search 搜索关键字
+     * @param sortBy 排序字段
+     * @param sortOrder 排序方向
+     * @return Holding列表
+     */
+    List<Holding> selectByCikWithFilingFiltered(@Param("cik") String cik, 
+                                               @Param("minValue") Double minValue, 
+                                               @Param("search") String search, 
+                                               @Param("sortBy") String sortBy, 
+                                               @Param("sortOrder") String sortOrder);
+    
+    /**
+     * 根据CIK查询持仓用于导出
+     * @param cik 公司CIK
+     * @return Holding列表
+     */
+    List<Holding> selectByCikWithFilingForExport(@Param("cik") String cik);
+    
+    /**
+     * 计算所有持仓的总价值
+     * @return 总价值
+     */
+    java.math.BigDecimal sumAllValues();
 }

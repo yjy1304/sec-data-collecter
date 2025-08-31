@@ -4,6 +4,7 @@ import com.company.sec13f.repository.entity.Filing;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Filing数据访问接口
@@ -86,4 +87,32 @@ public interface FilingMapper {
      * @return 数量
      */
     long countByCik(@Param("cik") String cik);
+    
+    /**
+     * 获取所有有持仓数据的公司列表
+     * @param cik CIK筛选条件（可为null）
+     * @param name 公司名称筛选条件（可为null）
+     * @param sortBy 排序字段
+     * @return 公司列表，包含统计信息
+     */
+    List<Map<String, Object>> selectCompaniesWithHoldings(@Param("cik") String cik, @Param("name") String name, @Param("sortBy") String sortBy);
+    
+    /**
+     * 根据CIK获取最新的Filing
+     * @param cik 公司CIK
+     * @return 最新的Filing
+     */
+    Filing selectLatestByCik(@Param("cik") String cik);
+    
+    /**
+     * 获取最新的Filing
+     * @return 最新的Filing
+     */
+    Filing selectLatest();
+    
+    /**
+     * 统计不同公司数量
+     * @return 公司数量
+     */
+    long countDistinctCompanies();
 }

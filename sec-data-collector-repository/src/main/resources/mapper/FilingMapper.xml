@@ -119,4 +119,59 @@
         SELECT COUNT(*) FROM filings WHERE cik = #{cik}
     </select>
     
+    <!-- 获取所有有持仓数据的公司列表 -->
+    <select id="selectCompaniesWithHoldings" resultType="map">
+        SELECT DISTINCT f.cik, f.company_name as name, 
+               COUNT(h.id) as holdingsCount, 
+               MAX(f.filing_date) as latestFilingDate, 
+               SUM(h.value) as totalValue 
+        FROM filings f 
+        LEFT JOIN holdings h ON f.id = h.filing_id 
+        WHERE 1=1 
+        <if test="cik != null and cik != ''">
+            AND f.cik LIKE CONCAT('%', #{cik}, '%')
+        </if>
+        <if test="name != null and name != ''">
+            AND f.company_name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        GROUP BY f.cik, f.company_name 
+        HAVING COUNT(h.id) > 0 
+        <choose>
+            <when test="sortBy == 'cik'">
+                ORDER BY f.cik
+            </when>
+            <when test="sortBy == 'date'">
+                ORDER BY latestFilingDate DESC
+            </when>
+            <when test="sortBy == 'value'">
+                ORDER BY totalValue DESC
+            </when>
+            <otherwise>
+                ORDER BY f.company_name
+            </otherwise>
+        </choose>
+    </select>
+    
+    <!-- 根据CIK获取最新的Filing -->
+    <select id="selectLatestByCik" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM filings
+        WHERE cik = #{cik}
+        ORDER BY filing_date DESC
+        LIMIT 1
+    </select>
+    
+    <!-- 获取最新的Filing -->
+    <select id="selectLatest" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM filings
+        ORDER BY filing_date DESC
+        LIMIT 1
+    </select>
+    
+    <!-- 统计不同公司数量 -->
+    <select id="countDistinctCompanies" resultType="long">
+        SELECT COUNT(DISTINCT cik) FROM filings
+    </select>
+    
 </mapper>

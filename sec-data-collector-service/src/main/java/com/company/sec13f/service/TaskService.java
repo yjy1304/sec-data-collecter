@@ -1,9 +1,9 @@
 package com.company.sec13f.service;
 
-import com.company.sec13f.repository.database.UniversalTaskDAO;
 import com.company.sec13f.repository.entity.Task;
 import com.company.sec13f.repository.enums.TaskStatus;
 import com.company.sec13f.repository.enums.TaskType;
+import com.company.sec13f.repository.mapper.TaskMapper;
 import com.company.sec13f.service.plugin.TaskProcessPlugin;
 import com.company.sec13f.service.plugin.TaskResult;
 import com.company.sec13f.service.util.Logger;
@@ -27,13 +27,13 @@ import java.util.concurrent.Executors;
 public class TaskService {
     
     private final Map<TaskType, TaskProcessPlugin> pluginMap = new HashMap<>();
-    private final UniversalTaskDAO taskDAO;
+    private final TaskMapper taskMapper;
     private final Logger logger;
     private final ExecutorService executorService;
     
     @Autowired
-    public TaskService(UniversalTaskDAO taskDAO) {
-        this.taskDAO = taskDAO;
+    public TaskService(TaskMapper taskMapper) {
+        this.taskMapper = taskMapper;
         this.logger = Logger.getInstance();
         this.executorService = Executors.newFixedThreadPool(3);
     }
@@ -41,8 +41,7 @@ public class TaskService {
     // @PostConstruct // Not available in Java 8
     public void init() {
         try {
-            // 初始化通用任务表
-            taskDAO.initializeTasksTable();
+            // MyBatis会自动处理表结构，不需要手动初始化
             logger.info("✅ TaskService初始化成功");
         } catch (Exception e) {
             logger.error("❌ TaskService初始化失败", e);
@@ -64,14 +63,14 @@ public class TaskService {
             try {
                 // 标记任务开始执行
                 task.setStarted();
-                taskDAO.updateTask(task);
+                taskMapper.update(task);
                 
                 // 获取对应的任务处理插件
                 TaskProcessPlugin plugin = pluginMap.get(task.getTaskType());
                 if (plugin == null) {
                     String errorMsg = "未找到类型为 " + task.getTaskType() + " 的任务处理插件";
                     task.setFailed(errorMsg);
-                    taskDAO.updateTask(task);
+                    taskMapper.update(task);
                     return TaskResult.failure(errorMsg);
                 }
                 
@@ -94,13 +93,13 @@ public class TaskService {
                         logger.error("❌ 任务失败: " + task.getTaskId());
                     }
                 }
-                taskDAO.updateTask(task);
+                taskMapper.update(task);
                 
                 return result;
                 
             } catch (Exception e) {
                 task.setFailed("任务执行异常: " + e.getMessage());
-                taskDAO.updateTask(task);
+                taskMapper.update(task);
                 logger.error("💥 任务执行异常: " + task.getTaskId(), e);
                 return TaskResult.failure("任务执行异常: " + e.getMessage(), e);
             }
@@ -117,10 +116,11 @@ public class TaskService {
             logger.info("🕐 开始定时任务调度...");
             
             // 获取待执行的任务 (PENDING状态)
-            List<Task> pendingTasks = taskDAO.findPendingTasks();
+            List<Task> pendingTasks = taskMapper.selectPendingTasks();
             
             // 获取需要重试的任务 (RETRY状态且next_execute_time已到期)
-            List<Task> retryTasks = taskDAO.findRetryTasksReadyForExecution(LocalDateTime.now());
+            String currentTime = LocalDateTime.now().toString();
+            List<Task> retryTasks = taskMapper.selectRetryTasksReadyForExecution(currentTime);
             
             int totalTasks = pendingTasks.size() + retryTasks.size();
             if (totalTasks == 0) {
@@ -151,7 +151,7 @@ public class TaskService {
             Task task = new Task(java.util.UUID.randomUUID().toString(), taskType);
             task.setTaskParameters(taskParameters);
             
-            taskDAO.saveTask(task);
+            taskMapper.insert(task);
             logger.info("💾 创建新任务: " + task.getTaskId() + " [" + taskType + "]");
             
             return task.getTaskId();
@@ -166,13 +166,13 @@ public class TaskService {
      * 获取任务状态
      */
     public Task getTaskStatus(String taskId) {
-        return taskDAO.findByTaskId(taskId);
+        return taskMapper.selectByTaskId(taskId);
     }
     
     /**
      * 获取所有任务
      */
     public List<Task> getAllTasks() {
-        return taskDAO.findAllTasks();
+        return taskMapper.selectAll();
     }
 }

@@ -1,6 +1,6 @@
 package com.company.sec13f.web.controller;
 
-import com.company.sec13f.service.ScheduledScrapingService;
+// Temporarily disabled: import com.company.sec13f.service.ScheduledScrapingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,11 +16,12 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class SchedulingController {
     
-    private final ScheduledScrapingService scheduledService;
+    // Temporarily disabled service dependency
+    // private final ScheduledScrapingService scheduledService;
     
-    @Autowired
-    public SchedulingController(ScheduledScrapingService scheduledService) {
-        this.scheduledService = scheduledService;
+    // @Autowired
+    public SchedulingController() {
+        // this.scheduledService = scheduledService;
     }
     
     /**
@@ -53,7 +54,10 @@ public class SchedulingController {
     @PostMapping("/retry-failed")
     public ResponseEntity<?> retryFailedTasks() {
         try {
-            Map<String, Object> result = scheduledService.triggerManualRetry();
+            // Temporarily disabled service call
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "Manual retry temporarily disabled");
             return ResponseEntity.ok(result);
             
         } catch (Exception e) {

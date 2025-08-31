@@ -424,31 +424,32 @@
         function searchCompanies() {
             const cik = document.getElementById('searchCik').value.trim();
             const name = document.getElementById('searchName').value.trim();
+            const sortBy = document.getElementById('sortBy').value;
             
-            // 这里模拟搜索结果，实际应该从API获取
-            // 因为现在没有相应的API端点，我们先用模拟数据
-            const mockCompanies = [
-                { cik: '0001067983', name: 'Berkshire Hathaway Inc' },
-                { cik: '0001524258', name: 'Alibaba Group Holding Limited' },
-                { cik: '0001013594', name: 'BlackRock Inc' },
-                { cik: '0000102909', name: 'Vanguard Group Inc' },
-                { cik: '0000093751', name: 'State Street Corp' },
-            ];
+            hideError();
+            document.getElementById('companyList').innerHTML = '<div class="loading">搜索公司中...</div>';
             
-            let filtered = mockCompanies;
+            const params = new URLSearchParams();
+            if (cik) params.append('cik', cik);
+            if (name) params.append('name', name);
+            params.append('sortBy', sortBy);
             
-            if (cik) {
-                filtered = filtered.filter(c => c.cik.includes(cik));
-            }
-            
-            if (name) {
-                filtered = filtered.filter(c => 
-                    c.name.toLowerCase().includes(name.toLowerCase())
-                );
-            }
-            
-            currentCompanies = filtered;
-            renderCompanies(filtered);
+            fetch('/api/holdings/companies?' + params.toString())
+                .then(response => response.json())
+                .then(data => {
+                    currentCompanies = data.map(c => ({
+                        cik: c.cik,
+                        name: c.name,
+                        holdingsCount: c.holdingsCount,
+                        totalValue: c.totalValue,
+                        latestFilingDate: c.latestFilingDate
+                    }));
+                    renderCompanies(currentCompanies);
+                })
+                .catch(error => {
+                    showError('搜索公司失败: ' + error.message);
+                    document.getElementById('companyList').innerHTML = '<div class="error">搜索失败</div>';
+                });
         }
         
         function renderCompanies(companies) {
@@ -463,6 +464,10 @@
                 <div class="company-card" onclick="selectCompany('${company.cik}', '${company.name}')">
                     <div style="font-weight: 600;">${company.name}</div>
                     <div style="font-size: 0.9rem; color: #666; font-family: monospace;">CIK: ${company.cik}</div>
+                    <div style="font-size: 0.8rem; color: #999;">
+                        持仓: ${company.holdingsCount || 0} | 
+                        最新: ${company.latestFilingDate || 'N/A'}
+                    </div>
                 </div>
             `).join('');
         }
@@ -493,33 +498,50 @@
                 <tr><td colspan="6" class="loading">加载持仓数据中...</td></tr>
             `;
             
-            // 这里需要调用实际的API来获取持仓数据
-            // 现在先模拟一些数据
-            setTimeout(() => {
-                const mockHoldings = generateMockHoldings();
-                currentHoldings = mockHoldings;
-                filteredHoldings = mockHoldings;
-                renderHoldings(mockHoldings);
-                updateSummary(mockHoldings);
-            }, 1000);
+            // 调用API获取持仓数据
+            fetch(`/api/holdings/company/${cik}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentHoldings = data.holdings || [];
+                    filteredHoldings = currentHoldings;
+                    renderHoldings(currentHoldings);
+                    updateSummaryFromData(data.summary);
+                })
+                .catch(error => {
+                    console.error('加载持仓数据失败:', error);
+                    document.getElementById('holdingsTableBody').innerHTML = `
+                        <tr><td colspan="6" class="error">加载持仓数据失败: ${error.message}</td></tr>
+                    `;
+                });
         }
         
-        function generateMockHoldings() {
-            const stocks = [
-                'Apple Inc', 'Microsoft Corp', 'Amazon.com Inc', 'Alphabet Inc Class A', 'Tesla Inc',
-                'Meta Platforms Inc', 'Johnson & Johnson', 'UnitedHealth Group Inc', 'Procter & Gamble Co',
-                'Home Depot Inc', 'Mastercard Inc Class A', 'NVIDIA Corp', 'JPMorgan Chase & Co',
-                'Visa Inc Class A', 'Walmart Inc', 'Bank of America Corp', 'Walt Disney Co'
-            ];
+        function updateSummaryFromData(summary) {
+            if (!summary) {
+                document.getElementById('totalHoldings').textContent = '0';
+                document.getElementById('totalValue').textContent = '$0';
+                document.getElementById('latestFilingDate').textContent = '-';
+                document.getElementById('avgPosition').textContent = '$0';
+                return;
+            }
             
-            return stocks.map((stock, index) => ({
-                nameOfIssuer: stock,
-                cusip: String(Math.floor(Math.random() * 100000000)).padStart(8, '0') + String(Math.floor(Math.random() * 100)),
-                value: Math.floor(Math.random() * 5000000) + 100000,
-                shares: Math.floor(Math.random() * 10000000) + 1000,
-                filingDate: '2024-12-31',
-                accessionNumber: `0001067983-24-0000${String(index + 1).padStart(2, '0')}`
-            }));
+            document.getElementById('totalHoldings').textContent = summary.totalHoldings.toString();
+            document.getElementById('totalValue').textContent = '$' + formatNumber(Math.round(summary.totalValue));
+            document.getElementById('avgPosition').textContent = '$' + formatNumber(Math.round(summary.avgPosition));
+            
+            // latestFilingDate 在 selectedCompany 中设置
+            if (selectedCompany && selectedCompany.latestFilingDate) {
+                document.getElementById('latestFilingDate').textContent = selectedCompany.latestFilingDate;
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('searchError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('searchError').style.display = 'none';
         }
         
         function renderHoldings(holdings) {
@@ -586,25 +608,13 @@
         }
         
         function exportToCSV() {
-            if (!filteredHoldings || filteredHoldings.length === 0) {
-                alert('没有数据可导出');
+            if (!selectedCompany) {
+                alert('请先选择一个公司');
                 return;
             }
             
-            const headers = ['股票名称', 'CUSIP', '市值(千美元)', '股票数量', '报告日期', '报告编号'];
-            const csvContent = [
-                headers.join(','),
-                ...filteredHoldings.map(h => [
-                    `"${h.nameOfIssuer}"`,
-                    h.cusip,
-                    h.value,
-                    h.shares,
-                    h.filingDate,
-                    h.accessionNumber
-                ].join(','))
-            ].join('\\n');
-            
-            downloadFile(csvContent, `holdings_${selectedCompany.cik}_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+            // 直接使用API导出CSV
+            window.open(`/api/holdings/export/${selectedCompany.cik}/csv`, '_blank');
         }
         
         function exportToJSON() {
