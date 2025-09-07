@@ -21,7 +21,8 @@
       "Bash(cp:*)",
       "Bash(find:*)",
       "Bash(sed:*)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(timeout 10 mvn:*)"
     ],
     "deny": [],
     "ask": []

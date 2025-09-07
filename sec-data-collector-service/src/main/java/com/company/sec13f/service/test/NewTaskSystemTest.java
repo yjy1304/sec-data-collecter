@@ -40,9 +40,7 @@ public class NewTaskSystemTest {
             
             // 模拟状态变更
             System.out.println("\n🔄 模拟任务生命周期:");
-            testTask.setStarted();
-            System.out.println("▶️ 任务开始执行: " + testTask.getStatus());
-            
+
             Thread.sleep(1000); // 模拟任务执行时间
             
             testTask.setCompleted("模拟任务执行成功");

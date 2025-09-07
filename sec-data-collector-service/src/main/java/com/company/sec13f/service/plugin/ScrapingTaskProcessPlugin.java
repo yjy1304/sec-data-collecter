@@ -90,9 +90,28 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
             logger.info(resultMessage);
             return TaskResult.success(resultMessage);
             
+        } catch (java.io.IOException e) {
+            if (e.getMessage() != null && e.getMessage().contains("timeout")) {
+                String errorMessage = "网络请求超时: " + e.getMessage();
+                logger.warn("⏰ 抓取任务网络超时，将重试: " + errorMessage);
+                return TaskResult.failure(errorMessage, e);
+            } else if (e.getMessage() != null && e.getMessage().contains("Connection")) {
+                String errorMessage = "网络连接失败: " + e.getMessage();
+                logger.warn("🔌 抓取任务连接失败，将重试: " + errorMessage);
+                return TaskResult.failure(errorMessage, e);
+            } else {
+                String errorMessage = "网络IO异常: " + e.getMessage();
+                logger.error("🌐 抓取任务网络异常", e);
+                return TaskResult.failure(errorMessage, e);
+            }
+        } catch (InterruptedException e) {
+            String errorMessage = "抓取任务被中断: " + e.getMessage();
+            logger.warn("🛑 抓取任务被中断: " + errorMessage);
+            Thread.currentThread().interrupt(); // 重置中断状态
+            return TaskResult.failure(errorMessage, e);
         } catch (Exception e) {
             String errorMessage = "数据抓取失败: " + e.getMessage();
-            logger.error("Scraping task failed", e);
+            logger.error("💥 抓取任务未知异常", e);
             return TaskResult.failure(errorMessage, e);
         }
     }

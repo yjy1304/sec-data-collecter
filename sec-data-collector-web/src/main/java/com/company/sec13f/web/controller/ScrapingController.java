@@ -1,29 +1,23 @@
 package com.company.sec13f.web.controller;
 
 import com.company.sec13f.repository.entity.Task;
-import com.company.sec13f.repository.enums.TaskStatus;
 import com.company.sec13f.repository.enums.TaskType;
 import com.company.sec13f.repository.mapper.TaskMapper;
+import com.company.sec13f.service.TaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
- * Spring MVC Controller for data scraping APIs - 简化版本
+ * Spring MVC Controller for data scraping APIs - 使用TaskService统一调度
  */
 @RestController
 @RequestMapping("/api/scraping")
@@ -31,14 +25,15 @@ import java.util.concurrent.Executors;
 public class ScrapingController {
     
     private static final Logger logger = LoggerFactory.getLogger(ScrapingController.class);
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
-    private final Map<String, CompletableFuture<Void>> runningTasks = new ConcurrentHashMap<>();
     
     @Autowired
     private TaskMapper taskMapper;
     
+    @Autowired
+    private TaskService taskService;
+    
     /**
-     * 启动单个公司的数据爬取任务
+     * 创建数据爬取任务 - 统一使用TaskService调度
      * POST /api/scraping/scrape
      */
     @PostMapping("/scrape")
@@ -56,30 +51,26 @@ public class ScrapingController {
                     .body(createErrorResponse("Company name parameter is required"));
             }
             
-            String taskId = generateTaskId();
+            // 创建任务参数
+            String taskParameters = String.format("{\"cik\":\"%s\",\"companyName\":\"%s\"}", 
+                                                cik.trim(), companyName.trim());
             
-            // 插入任务到数据库
-            insertTaskToDatabase(taskId, cik.trim(), companyName.trim());
-            
-            // 异步执行抓取任务
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                executeScrapingTask(taskId, cik.trim(), companyName.trim());
-            }, executorService);
-            
-            runningTasks.put(taskId, future);
+            // 通过TaskService统一创建任务（会自动设置为PENDING状态）
+            String taskId = taskService.createTask(TaskType.SCRAP_HOLDING, taskParameters);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("taskId", taskId);
-            response.put("message", "Scraping task started successfully");
+            response.put("message", "任务已创建，将由调度器自动执行");
+            response.put("note", "任务状态可通过 /api/scraping/status/{taskId} 查询");
             
-            logger.info("🎯 Started scraping task: {} for CIK: {} - {}", taskId, cik, companyName);
+            logger.info("📝 创建抓取任务: {} for CIK: {} - {} (状态: PENDING)", taskId, cik, companyName);
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            logger.error("❌ Failed to start scraping task", e);
+            logger.error("❌ Failed to create scraping task", e);
             return ResponseEntity.internalServerError()
-                .body(createErrorResponse("Failed to start scraping task: " + e.getMessage()));
+                .body(createErrorResponse("Failed to create scraping task: " + e.getMessage()));
         }
     }
     
@@ -119,88 +110,6 @@ public class ScrapingController {
         }
     }
     
-    /**
-     * 插入任务到数据库
-     */
-    private void insertTaskToDatabase(String taskId, String cik, String companyName) {
-        try {
-            // 创建任务参数JSON
-            String taskParameters = String.format("{\"cik\":\"%s\",\"companyName\":\"%s\"}", cik, companyName);
-            
-            // 创建Task对象
-            Task task = new Task(taskId, TaskType.SEC_SCRAPING);
-            task.setTaskParameters(taskParameters);
-            task.setMessage("任务已创建");
-            
-            // 使用MyBatis插入任务
-            int inserted = taskMapper.insert(task);
-            if (inserted > 0) {
-                logger.info("📝 Created task in database: {}", taskId);
-            }
-        } catch (Exception e) {
-            logger.error("❌ Failed to insert task to database: " + taskId, e);
-        }
-    }
-    
-    /**
-     * 执行抓取任务
-     */
-    private void executeScrapingTask(String taskId, String cik, String companyName) {
-        try {
-            // 更新任务状态为运行中
-            updateTaskStatus(taskId, "RUNNING", "正在抓取数据...");
-            logger.info("🔄 SCRAPING_STARTED - CIK: {}, Company: {}", cik, companyName);
-            
-            // 模拟抓取过程
-            Thread.sleep(3000); // 模拟3秒的抓取时间
-            
-            // 更新任务状态为完成
-            updateTaskStatus(taskId, "COMPLETED", String.format("模拟抓取完成 - CIK: %s (%s)", cik, companyName));
-            logger.info("✅ SCRAPING_COMPLETED - CIK: {}, Company: {}", cik, companyName);
-            
-        } catch (Exception e) {
-            String errorMessage = "Scraping task failed: " + e.getMessage();
-            updateTaskStatus(taskId, "FAILED", errorMessage);
-            logger.error("❌ SCRAPING_FAILED - CIK: {}, Error: {}", cik, e.getMessage());
-        } finally {
-            runningTasks.remove(taskId);
-        }
-    }
-    
-    /**
-     * 更新任务状态
-     */
-    private void updateTaskStatus(String taskId, String status, String message) {
-        try {
-            // 查询现有任务
-            Task task = taskMapper.selectByTaskId(taskId);
-            if (task == null) {
-                logger.error("❌ Task not found: {}", taskId);
-                return;
-            }
-            
-            // 更新任务状态
-            TaskStatus taskStatus = TaskStatus.valueOf(status);
-            task.setStatus(taskStatus);
-            task.setMessage(message);
-            task.setUpdatedAt(LocalDateTime.now());
-            
-            // 根据状态设置时间
-            if (TaskStatus.RUNNING.equals(taskStatus)) {
-                task.setStartTime(LocalDateTime.now());
-            } else if (TaskStatus.COMPLETED.equals(taskStatus) || TaskStatus.FAILED.equals(taskStatus)) {
-                task.setEndTime(LocalDateTime.now());
-            }
-            
-            // 使用MyBatis更新任务
-            int updated = taskMapper.update(task);
-            if (updated > 0) {
-                logger.debug("🔄 Updated task status: {} -> {}", taskId, status);
-            }
-        } catch (Exception e) {
-            logger.error("❌ Failed to update task status: " + taskId, e);
-        }
-    }
     
     /**
      * 使用MyBatis获取任务列表
@@ -322,13 +231,7 @@ public class ScrapingController {
         
         return null;
     }
-    
-    /**
-     * 生成任务ID
-     */
-    private String generateTaskId() {
-        return "scrape_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
-    }
+
     
     /**
      * 创建错误响应
@@ -342,12 +245,18 @@ public class ScrapingController {
     }
     
     /**
-     * 获取运行中的任务数量
+     * 获取TaskService插件状态（调试用）
      */
-    @GetMapping("/running-count")
-    public ResponseEntity<?> getRunningTasksCount() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("runningTasks", runningTasks.size());
-        return ResponseEntity.ok(response);
+    @GetMapping("/plugin-status")
+    public ResponseEntity<?> getPluginStatus() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            response.put("pluginStatus", taskService.getPluginStatus());
+            response.put("registeredPlugins", taskService.getRegisteredPlugins());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                .body(createErrorResponse("Failed to get plugin status: " + e.getMessage()));
+        }
     }
 }

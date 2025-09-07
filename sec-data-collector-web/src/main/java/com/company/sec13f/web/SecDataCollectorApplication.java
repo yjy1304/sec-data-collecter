@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main Spring Boot application class for SEC Data Collector
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.ComponentScan;
     "com.company.sec13f"
 })
 @MapperScan(basePackages = "com.company.sec13f.repository.mapper")
+@EnableScheduling
 public class SecDataCollectorApplication {
 
     public static void main(String[] args) {

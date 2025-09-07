@@ -57,13 +57,7 @@ public class Task {
         this.nextExecuteTime = LocalDateTime.now().plusHours(1); // 1小时后重试
         this.updatedAt = LocalDateTime.now();
     }
-    
-    // 设置任务开始执行
-    public void setStarted() {
-        this.status = TaskStatus.RUNNING;
-        this.startTime = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
+
     
     // 设置任务完成
     public void setCompleted(String message) {

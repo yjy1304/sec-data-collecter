@@ -5,7 +5,6 @@ package com.company.sec13f.repository.enums;
  */
 public enum TaskStatus {
     PENDING("待处理"),
-    RUNNING("执行中"),
     RETRY("等待重试"),
     COMPLETED("已完成"),
     FAILED("失败");

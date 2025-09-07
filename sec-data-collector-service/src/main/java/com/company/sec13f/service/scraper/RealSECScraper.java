@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
@@ -35,8 +36,16 @@ public class RealSECScraper implements Closeable {
     private long lastRequestTime = 0;
 
     public RealSECScraper() {
+        // 配置3秒超时的请求配置
+        RequestConfig requestConfig = RequestConfig.custom()
+            .setConnectionRequestTimeout(3000)  // 从连接池获取连接的超时时间
+            .setConnectTimeout(3000)           // 建立连接的超时时间  
+            .setSocketTimeout(3000)            // 数据传输的超时时间
+            .build();
+            
         this.httpClient = HttpClientBuilder.create()
             .setUserAgent("SEC13F Analysis Tool admin@sec13fparser.com") // 符合SEC文档要求的格式
+            .setDefaultRequestConfig(requestConfig)
             .build();
         this.objectMapper = new ObjectMapper();
         this.logger = Logger.getInstance();
@@ -259,7 +268,7 @@ public class RealSECScraper implements Closeable {
     }
 
     /**
-     * 执行HTTP GET请求
+     * 执行HTTP GET请求 (带3秒超时)
      */
     private String executeGetRequest(String url) throws IOException {
         HttpGet request = new HttpGet(url);
@@ -274,21 +283,42 @@ public class RealSECScraper implements Closeable {
             request.setHeader("Host", "www.sec.gov");
         }
         
-        HttpResponse response = httpClient.execute(request);
-        int statusCode = response.getStatusLine().getStatusCode();
-        
-        logger.secRequest(url, statusCode);
-        
-        if (statusCode != 200) {
-            throw new IOException("SEC request failed with status: " + statusCode + " for URL: " + url);
+        long startTime = System.currentTimeMillis();
+        try {
+            logger.debug("🌐 执行HTTP请求: " + url + " (3秒超时)");
+            HttpResponse response = httpClient.execute(request);
+            long duration = System.currentTimeMillis() - startTime;
+            int statusCode = response.getStatusLine().getStatusCode();
+            
+            logger.secRequest(url, statusCode);
+            logger.debug("⏱️ 请求完成，耗时: " + duration + "ms, 状态码: " + statusCode);
+            
+            if (statusCode != 200) {
+                throw new IOException("SEC request failed with status: " + statusCode + " for URL: " + url);
+            }
+            
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                String content = EntityUtils.toString(entity);
+                logger.debug("📦 响应内容长度: " + (content != null ? content.length() : 0) + " 字符");
+                return content;
+            }
+            
+            return null;
+            
+        } catch (java.net.SocketTimeoutException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            logger.warn("⏰ HTTP请求超时: " + url + " (耗时: " + duration + "ms)");
+            throw new IOException("Request timeout after 3 seconds for URL: " + url, e);
+        } catch (java.net.ConnectException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            logger.warn("🔌 连接失败: " + url + " (耗时: " + duration + "ms)");
+            throw new IOException("Connection failed for URL: " + url, e);
+        } catch (IOException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            logger.warn("❌ HTTP请求异常: " + url + " (耗时: " + duration + "ms) - " + e.getMessage());
+            throw e;
         }
-        
-        HttpEntity entity = response.getEntity();
-        if (entity != null) {
-            return EntityUtils.toString(entity);
-        }
-        
-        return null;
     }
 
     @Override
