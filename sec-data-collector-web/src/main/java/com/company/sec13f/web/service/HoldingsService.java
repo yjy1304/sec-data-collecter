@@ -41,7 +41,7 @@ public class HoldingsService {
     /**
      * 根据CIK获取公司的所有持仓信息
      */
-    public Map<String, Object> getCompanyHoldings(String cik, Double minValue, String search, String sortBy, String sortOrder) {
+    public Map<String, Object> getCompanyHoldings(String cik, Double minValue, String search, String sortBy, String sortOrder, String filingDateFrom, String filingDateTo, String reportPeriodFrom, String reportPeriodTo) {
         try (SqlSession session = MyBatisSessionFactory.openSession()) {
             FilingMapper filingMapper = session.getMapper(FilingMapper.class);
             HoldingMapper holdingMapper = session.getMapper(HoldingMapper.class);
@@ -58,8 +58,19 @@ public class HoldingsService {
             result.put("companyName", latestFiling.getCompanyName());
             result.put("latestFilingDate", latestFiling.getFilingDate());
             
-            // 获取持仓数据
-            List<Holding> holdings = holdingMapper.selectByCikWithFilingFiltered(cik, minValue, search, sortBy, sortOrder);
+            // 获取持仓数据，支持日期筛选和报告期间筛选
+            Map<String, Object> params = new HashMap<>();
+            params.put("cik", cik);
+            params.put("minValue", minValue);
+            params.put("search", search);
+            params.put("sortBy", sortBy);
+            params.put("sortOrder", sortOrder);
+            params.put("filingDateFrom", filingDateFrom);
+            params.put("filingDateTo", filingDateTo);
+            params.put("reportPeriodFrom", reportPeriodFrom);
+            params.put("reportPeriodTo", reportPeriodTo);
+            
+            List<Holding> holdings = holdingMapper.selectByCikWithFilingAndReportPeriodFiltered(params);
             
             // 计算统计信息
             Map<String, Object> summary = new HashMap<>();

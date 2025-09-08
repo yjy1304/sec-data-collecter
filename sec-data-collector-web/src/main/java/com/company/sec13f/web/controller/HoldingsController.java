@@ -46,10 +46,15 @@ public class HoldingsController {
             @RequestParam(required = false) Double minValue,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "value") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortOrder) {
+            @RequestParam(defaultValue = "desc") String sortOrder,
+            @RequestParam(required = false) String filingDateFrom,
+            @RequestParam(required = false) String filingDateTo,
+            @RequestParam(required = false) String reportPeriodFrom,
+            @RequestParam(required = false) String reportPeriodTo) {
         
         try {
-            Map<String, Object> result = holdingsService.getCompanyHoldings(cik, minValue, search, sortBy, sortOrder);
+            Map<String, Object> result = holdingsService.getCompanyHoldings(cik, minValue, search, sortBy, sortOrder, 
+                    filingDateFrom, filingDateTo, reportPeriodFrom, reportPeriodTo);
             if (result == null) {
                 return ResponseEntity.notFound().build();
             }

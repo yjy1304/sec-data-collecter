@@ -46,29 +46,28 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
             
             logger.scrapingStarted(cik, companyName);
             
-            // 获取公司的13F文件列表
-            List<com.company.sec13f.repository.model.Filing> filings = scraper.getCompanyFilings(cik);
+            // 使用新的搜索API获取公司的13F文件列表
+            List<com.company.sec13f.repository.model.Filing> filings = scraper.getCompanyFilingsWithSearchAPI(cik);
             logger.info("Found " + filings.size() + " 13F filings for " + companyName);
             
             int savedCount = 0;
             for (com.company.sec13f.repository.model.Filing filing : filings) {
                 // 检查是否已经存在
                 if (!isFilingExists(filing.getAccessionNumber())) {
-                    // 获取详细的13F数据
-                    com.company.sec13f.repository.model.Filing detailedFiling = scraper.get13FDetails(filing.getAccessionNumber(), cik);
-                    detailedFiling.setCompanyName(companyName);
-                    detailedFiling.setCik(cik);
+                    // 新的搜索API已经包含了持仓数据，直接使用
+                    filing.setCompanyName(companyName);
+                    filing.setCik(cik);
                     
                     // 验证数据
-                    DataValidator.ValidationResult validation = DataValidator.validateFiling(detailedFiling);
+                    DataValidator.ValidationResult validation = DataValidator.validateFiling(filing);
                     if (validation.isValid()) {
                         // 转换为Entity对象并保存到数据库
-                        com.company.sec13f.repository.entity.Filing entityFiling = convertToEntity(detailedFiling);
+                        com.company.sec13f.repository.entity.Filing entityFiling = convertToEntity(filing);
                         int inserted = filingMapper.insert(entityFiling);
                         if (inserted > 0) {
                             // 如果Filing有持仓数据，也保存持仓信息
-                            if (detailedFiling.getHoldings() != null && !detailedFiling.getHoldings().isEmpty()) {
-                                for (com.company.sec13f.repository.model.Holding modelHolding : detailedFiling.getHoldings()) {
+                            if (filing.getHoldings() != null && !filing.getHoldings().isEmpty()) {
+                                for (com.company.sec13f.repository.model.Holding modelHolding : filing.getHoldings()) {
                                     com.company.sec13f.repository.entity.Holding entityHolding = convertToEntity(modelHolding);
                                     entityHolding.setFilingId(entityFiling.getId());
                                     holdingMapper.insert(entityHolding);

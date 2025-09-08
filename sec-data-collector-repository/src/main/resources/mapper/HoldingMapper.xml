@@ -21,6 +21,7 @@
             <result column="f_cik" property="cik" jdbcType="VARCHAR"/>
             <result column="f_company_name" property="companyName" jdbcType="VARCHAR"/>
             <result column="f_filing_date" property="filingDate" jdbcType="DATE"/>
+            <result column="f_report_period" property="reportPeriod" jdbcType="DATE"/>
             <result column="f_accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
             <result column="f_form_file" property="formFile" jdbcType="VARCHAR"/>
         </association>
@@ -55,7 +56,7 @@
     
     <select id="selectByCikWithFiling" parameterType="String" resultMap="WithFilingResultMap">
         SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
-               f.filing_date as f_filing_date, f.accession_number as f_accession_number, f.form_file as f_form_file
+               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
         FROM holdings h
         JOIN filings f ON h.filing_id = f.id
         WHERE f.cik = #{cik}
@@ -74,7 +75,7 @@
     
     <select id="selectTopHoldingsByCik" parameterType="map" resultMap="WithFilingResultMap">
         SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
-               f.filing_date as f_filing_date, f.accession_number as f_accession_number, f.form_file as f_form_file
+               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
         FROM holdings h
         JOIN filings f ON h.filing_id = f.id
         WHERE f.cik = #{cik}
@@ -116,12 +117,12 @@
     <!-- 根据CIK查询持仓（带Filing信息和筛选条件） -->
     <select id="selectByCikWithFilingFiltered" resultMap="WithFilingResultMap">
         SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
-               f.filing_date as f_filing_date, f.accession_number as f_accession_number, f.form_file as f_form_file
+               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
         FROM holdings h
         JOIN filings f ON h.filing_id = f.id
         WHERE f.cik = #{cik}
-        <if test="minValue != null and minValue > 0">
-            AND h.value >= #{minValue}
+        <if test="minValue != null and minValue &gt; 0">
+            AND h.value &gt;= #{minValue}
         </if>
         <if test="search != null and search != ''">
             AND (h.name_of_issuer LIKE CONCAT('%', #{search}, '%') OR h.cusip LIKE CONCAT('%', #{search}, '%'))
@@ -156,7 +157,7 @@
     <!-- 根据CIK查询持仓用于导出 -->
     <select id="selectByCikWithFilingForExport" parameterType="String" resultMap="WithFilingResultMap">
         SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
-               f.filing_date as f_filing_date, f.accession_number as f_accession_number, f.form_file as f_form_file
+               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
         FROM holdings h
         JOIN filings f ON h.filing_id = f.id
         WHERE f.cik = #{cik}
@@ -166,6 +167,107 @@
     <!-- 计算所有持仓的总价值 -->
     <select id="sumAllValues" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(value), 0) FROM holdings
+    </select>
+    
+    <!-- 根据CIK查询持仓（带Filing信息和筛选条件，支持日期筛选） -->
+    <select id="selectByCikWithFilingDateFiltered" resultMap="WithFilingResultMap">
+        SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
+               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
+        FROM holdings h
+        JOIN filings f ON h.filing_id = f.id
+        WHERE f.cik = #{cik}
+        <if test="filingDateFrom != null and filingDateFrom != ''">
+            AND f.filing_date &gt;= #{filingDateFrom}
+        </if>
+        <if test="filingDateTo != null and filingDateTo != ''">
+            AND f.filing_date &lt;= #{filingDateTo}
+        </if>
+        <if test="minValue != null and minValue &gt; 0">
+            AND h.value &gt;= #{minValue}
+        </if>
+        <if test="search != null and search != ''">
+            AND (h.name_of_issuer LIKE CONCAT('%', #{search}, '%') OR h.cusip LIKE CONCAT('%', #{search}, '%'))
+        </if>
+        <choose>
+            <when test="sortBy == 'name'">
+                ORDER BY h.name_of_issuer
+            </when>
+            <when test="sortBy == 'cusip'">
+                ORDER BY h.cusip
+            </when>
+            <when test="sortBy == 'shares'">
+                ORDER BY h.shares
+            </when>
+            <when test="sortBy == 'filingDate'">
+                ORDER BY f.filing_date
+            </when>
+            <otherwise>
+                ORDER BY h.value
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="sortOrder == 'asc'">
+                ASC
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>
+    </select>
+    
+    <!-- 根据CIK查询持仓（带Filing信息和筛选条件，支持日期筛选和报告期间筛选） -->
+    <select id="selectByCikWithFilingAndReportPeriodFiltered" parameterType="map" resultMap="WithFilingResultMap">
+        SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
+               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
+        FROM holdings h
+        JOIN filings f ON h.filing_id = f.id
+        WHERE f.cik = #{cik}
+        <if test="filingDateFrom != null and filingDateFrom != ''">
+            AND f.filing_date &gt;= #{filingDateFrom}
+        </if>
+        <if test="filingDateTo != null and filingDateTo != ''">
+            AND f.filing_date &lt;= #{filingDateTo}
+        </if>
+        <if test="reportPeriodFrom != null and reportPeriodFrom != ''">
+            AND f.report_period &gt;= #{reportPeriodFrom}
+        </if>
+        <if test="reportPeriodTo != null and reportPeriodTo != ''">
+            AND f.report_period &lt;= #{reportPeriodTo}
+        </if>
+        <if test="minValue != null and minValue &gt; 0">
+            AND h.value &gt;= #{minValue}
+        </if>
+        <if test="search != null and search != ''">
+            AND (h.name_of_issuer LIKE CONCAT('%', #{search}, '%') OR h.cusip LIKE CONCAT('%', #{search}, '%'))
+        </if>
+        <choose>
+            <when test="sortBy == 'name'">
+                ORDER BY h.name_of_issuer
+            </when>
+            <when test="sortBy == 'cusip'">
+                ORDER BY h.cusip
+            </when>
+            <when test="sortBy == 'shares'">
+                ORDER BY h.shares
+            </when>
+            <when test="sortBy == 'filingDate'">
+                ORDER BY f.filing_date
+            </when>
+            <when test="sortBy == 'reportPeriod'">
+                ORDER BY f.report_period
+            </when>
+            <otherwise>
+                ORDER BY h.value
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="sortOrder == 'asc'">
+                ASC
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>
     </select>
     
 </mapper>

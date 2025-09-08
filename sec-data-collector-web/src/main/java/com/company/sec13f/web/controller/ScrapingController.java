@@ -39,21 +39,20 @@ public class ScrapingController {
     @PostMapping("/scrape")
     public ResponseEntity<?> scrapeCompany(
             @RequestParam String cik,
-            @RequestParam String companyName) {
+            @RequestParam(required = false) String companyName) {
         try {
             if (cik == null || cik.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                     .body(createErrorResponse("CIK parameter is required"));
             }
             
-            if (companyName == null || companyName.trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                    .body(createErrorResponse("Company name parameter is required"));
-            }
+            // 如果没有提供公司名称，使用空字符串或者CIK作为默认值
+            String finalCompanyName = (companyName != null && !companyName.trim().isEmpty()) ? 
+                companyName.trim() : ("Company_" + cik.trim());
             
             // 创建任务参数
             String taskParameters = String.format("{\"cik\":\"%s\",\"companyName\":\"%s\"}", 
-                                                cik.trim(), companyName.trim());
+                                                cik.trim(), finalCompanyName);
             
             // 通过TaskService统一创建任务（会自动设置为PENDING状态）
             String taskId = taskService.createTask(TaskType.SCRAP_HOLDING, taskParameters);
@@ -64,7 +63,7 @@ public class ScrapingController {
             response.put("message", "任务已创建，将由调度器自动执行");
             response.put("note", "任务状态可通过 /api/scraping/status/{taskId} 查询");
             
-            logger.info("📝 创建抓取任务: {} for CIK: {} - {} (状态: PENDING)", taskId, cik, companyName);
+            logger.info("📝 创建抓取任务: {} for CIK: {} - {} (状态: PENDING)", taskId, cik, finalCompanyName);
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {

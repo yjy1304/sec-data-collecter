@@ -11,6 +11,7 @@
         <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
         <result column="filing_type" property="filingType" jdbcType="VARCHAR"/>
         <result column="filing_date" property="filingDate" jdbcType="DATE"/>
+        <result column="report_period" property="reportPeriod" jdbcType="DATE"/>
         <result column="accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
         <result column="form_file" property="formFile" jdbcType="VARCHAR"/>
         <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
@@ -31,16 +32,16 @@
     
     <!-- 基础SQL片段 -->
     <sql id="Base_Column_List">
-        id, cik, company_name, filing_type, filing_date, accession_number, form_file, created_at, updated_at
+        id, cik, company_name, filing_type, filing_date, report_period, accession_number, form_file, created_at, updated_at
     </sql>
     
     <!-- 插入 -->
     <insert id="insert" parameterType="Filing" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO filings (
-            cik, company_name, filing_type, filing_date, 
+            cik, company_name, filing_type, filing_date, report_period, 
             accession_number, form_file, created_at, updated_at
         ) VALUES (
-            #{cik}, #{companyName}, #{filingType}, #{filingDate}, 
+            #{cik}, #{companyName}, #{filingType}, #{filingDate}, #{reportPeriod}, 
             #{accessionNumber}, #{formFile}, 
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )

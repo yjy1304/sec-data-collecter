@@ -116,7 +116,7 @@ public interface HoldingMapper {
     java.math.BigDecimal sumValueByCik(@Param("cik") String cik);
     
     /**
-     * 根据CIK查询持仓（带Fil ing信息和筛选条件）
+     * 根据CIK查询持仓（带Filing信息和筛选条件）
      * @param cik 公司CIK
      * @param minValue 最小价值筛选
      * @param search 搜索关键字
@@ -131,6 +131,25 @@ public interface HoldingMapper {
                                                @Param("sortOrder") String sortOrder);
     
     /**
+     * 根据CIK查询持仓（带Filing信息和筛选条件，支持日期筛选）
+     * @param cik 公司CIK
+     * @param minValue 最小价值筛选
+     * @param search 搜索关键字
+     * @param sortBy 排序字段
+     * @param sortOrder 排序方向
+     * @param filingDateFrom 报告日期开始
+     * @param filingDateTo 报告日期结束
+     * @return Holding列表
+     */
+    List<Holding> selectByCikWithFilingDateFiltered(@Param("cik") String cik, 
+                                                   @Param("minValue") Double minValue, 
+                                                   @Param("search") String search, 
+                                                   @Param("sortBy") String sortBy, 
+                                                   @Param("sortOrder") String sortOrder,
+                                                   @Param("filingDateFrom") String filingDateFrom,
+                                                   @Param("filingDateTo") String filingDateTo);
+    
+    /**
      * 根据CIK查询持仓用于导出
      * @param cik 公司CIK
      * @return Holding列表
@@ -142,4 +161,11 @@ public interface HoldingMapper {
      * @return 总价值
      */
     java.math.BigDecimal sumAllValues();
+    
+    /**
+     * 根据CIK查询持仓（带Filing信息和筛选条件，支持日期筛选和报告期间筛选）
+     * @param params 参数Map，包含cik, minValue, search, sortBy, sortOrder, filingDateFrom, filingDateTo, reportPeriodFrom, reportPeriodTo
+     * @return Holding列表
+     */
+    List<Holding> selectByCikWithFilingAndReportPeriodFiltered(java.util.Map<String, Object> params);
 }

@@ -258,8 +258,8 @@
                     <input type="text" id="cik" placeholder="例如: 0001067983" />
                 </div>
                 <div class="form-group">
-                    <label for="companyName">公司名称</label>
-                    <input type="text" id="companyName" placeholder="例如: Berkshire Hathaway" />
+                    <label for="companyName">公司名称 (可选)</label>
+                    <input type="text" id="companyName" placeholder="例如: Berkshire Hathaway (可留空)" />
                 </div>
                 <div class="form-group">
                     <label for="taskType">任务类型</label>
@@ -305,7 +305,7 @@
             
             <div class="task-header">
                 <div>任务ID</div>
-                <div>公司名称</div>
+                <div>公司信息</div>
                 <div>CIK</div>
                 <div>状态</div>
                 <div>已保存</div>
@@ -334,8 +334,8 @@
             const companyName = document.getElementById('companyName').value.trim();
             const taskType = document.getElementById('taskType').value;
             
-            if (!cik || !companyName) {
-                showError('请填写CIK编号和公司名称');
+            if (!cik) {
+                showError('请填写CIK编号');
                 return;
             }
             

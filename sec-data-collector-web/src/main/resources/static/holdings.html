@@ -376,6 +376,22 @@
                     <label>搜索股票:</label>
                     <input type="text" id="stockSearch" placeholder="股票名称或CUSIP" style="width: 150px;" />
                 </div>
+                <div class="filter-item">
+                    <label>报告日期从:</label>
+                    <input type="date" id="filingDateFrom" style="width: 150px;" />
+                </div>
+                <div class="filter-item">
+                    <label>报告日期到:</label>
+                    <input type="date" id="filingDateTo" style="width: 150px;" />
+                </div>
+                <div class="filter-item">
+                    <label>报告期间从:</label>
+                    <input type="date" id="reportPeriodFrom" style="width: 150px;" />
+                </div>
+                <div class="filter-item">
+                    <label>报告期间到:</label>
+                    <input type="date" id="reportPeriodTo" style="width: 150px;" />
+                </div>
                 <button class="btn btn-primary" onclick="applyFilters()" style="height: 35px; padding: 5px 15px;">应用筛选</button>
                 <button class="btn btn-secondary" onclick="clearFilters()" style="height: 35px; padding: 5px 15px;">清除筛选</button>
             </div>
@@ -394,12 +410,13 @@
                             <th>市值 (千美元)</th>
                             <th>股票数量</th>
                             <th>报告日期</th>
+                            <th>报告期间</th>
                             <th>报告编号</th>
                         </tr>
                     </thead>
                     <tbody id="holdingsTableBody">
                         <tr>
-                            <td colspan="6" class="loading">加载持仓数据中...</td>
+                            <td colspan="7" class="loading">加载持仓数据中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -488,18 +505,27 @@
             loadHoldings(cik);
         }
         
-        function loadHoldings(cik) {
+        function loadHoldings(cik, filingDateFrom = null, filingDateTo = null, reportPeriodFrom = null, reportPeriodTo = null) {
             // 更新标题
             document.querySelector('#holdingsSection .section-title').textContent = 
                 `${selectedCompany.name} (${cik}) 的持仓详情`;
             
             // 显示加载状态
             document.getElementById('holdingsTableBody').innerHTML = `
-                <tr><td colspan="6" class="loading">加载持仓数据中...</td></tr>
+                <tr><td colspan="7" class="loading">加载持仓数据中...</td></tr>
             `;
             
+            // 构建API请求参数
+            const params = new URLSearchParams();
+            if (filingDateFrom) params.append('filingDateFrom', filingDateFrom);
+            if (filingDateTo) params.append('filingDateTo', filingDateTo);
+            if (reportPeriodFrom) params.append('reportPeriodFrom', reportPeriodFrom);
+            if (reportPeriodTo) params.append('reportPeriodTo', reportPeriodTo);
+            
+            const url = `/api/holdings/company/${cik}` + (params.toString() ? '?' + params.toString() : '');
+            
             // 调用API获取持仓数据
-            fetch(`/api/holdings/company/${cik}`)
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     currentHoldings = data.holdings || [];
@@ -510,7 +536,7 @@
                 .catch(error => {
                     console.error('加载持仓数据失败:', error);
                     document.getElementById('holdingsTableBody').innerHTML = `
-                        <tr><td colspan="6" class="error">加载持仓数据失败: ${error.message}</td></tr>
+                        <tr><td colspan="7" class="error">加载持仓数据失败: ${error.message}</td></tr>
                     `;
                 });
         }
@@ -548,7 +574,7 @@
             const tbody = document.getElementById('holdingsTableBody');
             
             if (!holdings || holdings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">暂无持仓数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">暂无持仓数据</td></tr>';
                 return;
             }
             
@@ -558,8 +584,9 @@
                     <td class="cusip-cell">${holding.cusip}</td>
                     <td class="value-cell">$${formatNumber(holding.value)}</td>
                     <td class="shares-cell">${formatNumber(holding.shares)}</td>
-                    <td>${holding.filingDate}</td>
-                    <td style="font-family: monospace; font-size: 0.8rem;">${holding.accessionNumber}</td>
+                    <td>${holding.filing ? formatDate(holding.filing.filingDate) : 'N/A'}</td>
+                    <td>${holding.filing ? formatDate(holding.filing.reportPeriod) : 'N/A'}</td>
+                    <td style="font-family: monospace; font-size: 0.8rem;">${holding.filing ? holding.filing.accessionNumber : 'N/A'}</td>
                 </tr>
             `).join('');
         }
@@ -578,14 +605,27 @@
             
             document.getElementById('totalHoldings').textContent = holdings.length.toString();
             document.getElementById('totalValue').textContent = '$' + formatNumber(totalValue);
-            document.getElementById('latestFilingDate').textContent = holdings[0]?.filingDate || '-';
+            document.getElementById('latestFilingDate').textContent = holdings[0]?.filing?.filingDate || '-';
             document.getElementById('avgPosition').textContent = '$' + formatNumber(Math.round(avgPosition));
         }
         
         function applyFilters() {
             const minValue = parseFloat(document.getElementById('minValue').value) || 0;
             const stockSearch = document.getElementById('stockSearch').value.toLowerCase().trim();
+            const filingDateFrom = document.getElementById('filingDateFrom').value;
+            const filingDateTo = document.getElementById('filingDateTo').value;
+            const reportPeriodFrom = document.getElementById('reportPeriodFrom').value;
+            const reportPeriodTo = document.getElementById('reportPeriodTo').value;
             
+            // 如果有日期筛选，重新加载数据
+            if (filingDateFrom || filingDateTo || reportPeriodFrom || reportPeriodTo) {
+                if (selectedCompany) {
+                    loadHoldings(selectedCompany.cik, filingDateFrom, filingDateTo, reportPeriodFrom, reportPeriodTo);
+                    return;
+                }
+            }
+            
+            // 否则在客户端进行筛选
             filteredHoldings = currentHoldings.filter(holding => {
                 const valueMatch = holding.value >= minValue;
                 const nameMatch = !stockSearch || 
@@ -602,9 +642,19 @@
         function clearFilters() {
             document.getElementById('minValue').value = '';
             document.getElementById('stockSearch').value = '';
-            filteredHoldings = currentHoldings;
-            renderHoldings(filteredHoldings);
-            updateSummary(filteredHoldings);
+            document.getElementById('filingDateFrom').value = '';
+            document.getElementById('filingDateTo').value = '';
+            document.getElementById('reportPeriodFrom').value = '';
+            document.getElementById('reportPeriodTo').value = '';
+            
+            // 如果有选中的公司，重新加载所有数据
+            if (selectedCompany) {
+                loadHoldings(selectedCompany.cik);
+            } else {
+                filteredHoldings = currentHoldings;
+                renderHoldings(filteredHoldings);
+                updateSummary(filteredHoldings);
+            }
         }
         
         function exportToCSV() {
@@ -644,6 +694,17 @@
         
         function formatNumber(num) {
             return new Intl.NumberFormat('en-US').format(num);
+        }
+        
+        function formatDate(dateArray) {
+            if (!dateArray || !Array.isArray(dateArray) || dateArray.length < 3) {
+                return 'N/A';
+            }
+            // 日期数组格式: [年, 月, 日]
+            const year = dateArray[0];
+            const month = String(dateArray[1]).padStart(2, '0');
+            const day = String(dateArray[2]).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
         
         // 页面加载时初始化

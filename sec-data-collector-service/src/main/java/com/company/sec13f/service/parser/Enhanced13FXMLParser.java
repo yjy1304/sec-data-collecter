@@ -91,7 +91,18 @@ public class Enhanced13FXMLParser {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
             factory.setIgnoringElementContentWhitespace(true);
+            
+            // 禁用DTD验证以避免DTD解析问题
+            factory.setValidating(false);
+            factory.setFeature("http://xml.org/sax/features/validation", false);
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            
             DocumentBuilder builder = factory.newDocumentBuilder();
+            // 设置错误处理器以忽略DTD警告
+            builder.setErrorHandler(null);
             
             // 清理内容，移除可能的BOM和无效字符
             String cleanContent = cleanXMLContent(content);
@@ -111,6 +122,15 @@ public class Enhanced13FXMLParser {
             content = content.substring(1);
         }
         
+        // 移除或替换DTD声明以避免解析错误
+        content = content.replaceAll("<!DOCTYPE[^>]*>", "");
+        
+        // 移除HTML DTD引用
+        content = content.replaceAll("<!DOCTYPE\\s+[^>]*\"[^\"]*\\.dtd\"[^>]*>", "");
+        
+        // 移除可能导致问题的实体声明
+        content = content.replaceAll("<!ENTITY[^>]*>", "");
+        
         // 确保有XML声明
         if (!content.trim().startsWith("<?xml")) {
             content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + content;
@@ -120,34 +140,36 @@ public class Enhanced13FXMLParser {
     }
     
     /**
-     * 从DOM解析持仓信息
+     * 从DOM解析持仓信息 - 优化版本，符合SEC标准格式
      */
     private static List<Holding> parseHoldingsFromDOM(Document doc) {
         List<Holding> holdings = new ArrayList<>();
         
-        // 尝试多种可能的元素名称和路径
+        // 首先尝试标准的informationTable格式 (根据SEC API指南)
+        NodeList infoTableNodes = doc.getElementsByTagName("infoTable");
+        if (infoTableNodes.getLength() > 0) {
+            logger.debug("🎯 找到标准的infoTable节点: " + infoTableNodes.getLength() + " 个");
+            for (int i = 0; i < infoTableNodes.getLength(); i++) {
+                Element infoTableElement = (Element) infoTableNodes.item(i);
+                Holding holding = parseStandardInfoTable(infoTableElement);
+                if (holding != null) {
+                    holdings.add(holding);
+                }
+            }
+            return holdings;
+        }
+        
+        // 回退：尝试其他可能的元素名称和路径
         String[] holdingPaths = {
-            "infoTable",
             "informationTable", 
             "ns1:infoTable",
             "ns1:informationTable",
-            "//infoTable",
-            "//informationTable"
+            "holdingInfo",
+            "holding"
         };
         
         for (String path : holdingPaths) {
-            NodeList holdingNodes = null;
-            
-            if (path.startsWith("//")) {
-                // XPath风格
-                try {
-                    holdingNodes = doc.getElementsByTagName(path.substring(2));
-                } catch (Exception e) {
-                    continue;
-                }
-            } else {
-                holdingNodes = doc.getElementsByTagName(path);
-            }
+            NodeList holdingNodes = doc.getElementsByTagName(path);
             
             if (holdingNodes != null && holdingNodes.getLength() > 0) {
                 logger.debug("Found holdings using path: " + path);
@@ -329,6 +351,79 @@ public class Enhanced13FXMLParser {
             }
         }
         
+        return null;
+    }
+    
+    /**
+     * 解析标准的infoTable格式（符合SEC API指南）
+     */
+    private static Holding parseStandardInfoTable(Element infoTableElement) {
+        try {
+            Holding holding = new Holding();
+            
+            // 根据SEC API指南解析标准字段
+            String nameOfIssuer = getElementTextContent(infoTableElement, "nameOfIssuer");
+            String cusip = getElementTextContent(infoTableElement, "cusip");
+            String valueStr = getElementTextContent(infoTableElement, "value");
+            
+            // 解析股份数量 - 从shrsOrPrnAmt/sshPrnamt节点获取
+            String sharesStr = null;
+            NodeList shrsOrPrnAmtNodes = infoTableElement.getElementsByTagName("shrsOrPrnAmt");
+            if (shrsOrPrnAmtNodes.getLength() > 0) {
+                Element shrsOrPrnAmtElement = (Element) shrsOrPrnAmtNodes.item(0);
+                sharesStr = getElementTextContent(shrsOrPrnAmtElement, "sshPrnamt");
+            }
+            
+            // 验证必需字段
+            if (nameOfIssuer == null || cusip == null || valueStr == null) {
+                logger.debug("❌ 标准infoTable缺少必需字段: nameOfIssuer=" + nameOfIssuer + 
+                           ", cusip=" + cusip + ", value=" + valueStr);
+                return null;
+            }
+            
+            // 设置基本字段
+            holding.setNameOfIssuer(nameOfIssuer.trim());
+            holding.setCusip(cusip.trim());
+            
+            // 解析数值字段
+            try {
+                BigDecimal value = new BigDecimal(valueStr.replaceAll("[^0-9.-]", ""));
+                holding.setValue(value);
+            } catch (NumberFormatException e) {
+                logger.debug("⚠️ 无法解析value字段: " + valueStr);
+                return null;
+            }
+            
+            // 解析股份数量
+            if (sharesStr != null && !sharesStr.trim().isEmpty()) {
+                try {
+                    Long shares = Long.parseLong(sharesStr.replaceAll("[^0-9]", ""));
+                    holding.setShares(shares);
+                } catch (NumberFormatException e) {
+                    logger.debug("⚠️ 无法解析shares字段: " + sharesStr);
+                    // shares字段不是必需的，可以为空
+                }
+            }
+            
+            logger.debug("✅ 成功解析标准infoTable: " + nameOfIssuer + " (CUSIP: " + cusip + 
+                        ", Value: " + valueStr + ", Shares: " + sharesStr + ")");
+            return holding;
+            
+        } catch (Exception e) {
+            logger.debug("❌ 解析标准infoTable失败: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 获取元素的文本内容
+     */
+    private static String getElementTextContent(Element parent, String tagName) {
+        NodeList nodeList = parent.getElementsByTagName(tagName);
+        if (nodeList.getLength() > 0) {
+            String content = nodeList.item(0).getTextContent();
+            return content != null ? content.trim() : null;
+        }
         return null;
     }
     
