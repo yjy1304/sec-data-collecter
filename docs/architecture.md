@@ -39,17 +39,17 @@ sec-data-collector-repository/     # 持久化模块 (新架构)
 ## 🔧 技术栈
 
 ### 后端技术栈
-| 技术组件 | 版本 | 用途 |
-|---------|------|-----|
-| **Java** | 8+ | 核心开发语言 |
-| **Maven** | 3.6+ | 项目构建和依赖管理 |
-| **Jetty** | 9.4.51 | 嵌入式Web服务器 |
-| **SQLite** | 3.42.0 | 轻量级数据库 |
-| **MyBatis** | 3.5.13 | ORM框架 |
-| **Spring** | 5.3.27 | 依赖注入和事务管理 |
-| **Jackson** | 2.15.2 | JSON序列化/反序列化 |
+| 技术组件                  | 版本 | 用途 |
+|-----------------------|--|-----|
+| **Java**              | 8+ | 核心开发语言 |
+| **Maven**             | 3.6+ | 项目构建和依赖管理 |
+| **Jetty**             | 9.4.51 | 嵌入式Web服务器 |
+| **MySQL**             | 8+ | 轻量级数据库 |
+| **MyBatis**           | 3.5.13 | ORM框架 |
+| **Spring**            | 5.3.27 | 依赖注入和事务管理 |
+| **Jackson**           | 2.15.2 | JSON序列化/反序列化 |
 | **Apache HttpClient** | 4.5.13 | HTTP客户端 |
-| **JAXB** | 2.3.1 | XML解析 |
+| **JAXB**              | 2.3.1 | XML解析 |
 
 ### 前端技术栈
 - **HTML5/CSS3**: 现代化页面结构和样式
@@ -205,7 +205,7 @@ graph TD
     G --> H[Filing/Holding实体]
     H --> I[FilingRepositoryService]
     I --> J[MyBatis Mapper]
-    J --> K[SQLite数据库]
+    J --> K[MySQL数据库]
 ```
 
 ### 数据查询流程
@@ -216,7 +216,7 @@ graph TD
     B --> C[HoldingAnalysisService]
     C --> D[FilingRepositoryService]
     D --> E[MyBatis Mapper]
-    E --> F[SQLite查询]
+    E --> F[MySQL查询]
     F --> G[结果集处理]
     G --> H[业务逻辑计算]
     H --> I[JSON响应]
@@ -239,21 +239,11 @@ scraping_tasks (独立表)
 - 审计字段
 
 ### 连接管理
-
-```java
-// MyBatis连接池配置
-<dataSource type="POOLED">
-    <property name="driver" value="org.sqlite.JDBC"/>
-    <property name="url" value="jdbc:sqlite:sec13f.db"/>
-</dataSource>
-```
-
 ## 🚀 部署架构
 
 ### 嵌入式部署
 - **单一JAR包**: Maven Shade Plugin打包
 - **内嵌Jetty**: 无需外部Web服务器
-- **SQLite**: 无需独立数据库服务器
 - **端口**: 默认8080端口
 
 ### 启动流程

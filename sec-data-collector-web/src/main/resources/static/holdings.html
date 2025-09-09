@@ -229,6 +229,15 @@
             font-size: 0.9rem;
         }
         
+        .company-name-cell {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            color: #007bff;
+        }
+        
         .loading {
             text-align: center;
             color: #666;
@@ -409,6 +418,7 @@
                             <th>CUSIP</th>
                             <th>市值 (千美元)</th>
                             <th>股票数量</th>
+                            <th>机构名称</th>
                             <th>报告日期</th>
                             <th>报告期间</th>
                             <th>报告编号</th>
@@ -416,7 +426,7 @@
                     </thead>
                     <tbody id="holdingsTableBody">
                         <tr>
-                            <td colspan="7" class="loading">加载持仓数据中...</td>
+                            <td colspan="8" class="loading">加载持仓数据中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -512,7 +522,7 @@
             
             // 显示加载状态
             document.getElementById('holdingsTableBody').innerHTML = `
-                <tr><td colspan="7" class="loading">加载持仓数据中...</td></tr>
+                <tr><td colspan="8" class="loading">加载持仓数据中...</td></tr>
             `;
             
             // 构建API请求参数
@@ -536,7 +546,7 @@
                 .catch(error => {
                     console.error('加载持仓数据失败:', error);
                     document.getElementById('holdingsTableBody').innerHTML = `
-                        <tr><td colspan="7" class="error">加载持仓数据失败: ${error.message}</td></tr>
+                        <tr><td colspan="8" class="error">加载持仓数据失败: ${error.message}</td></tr>
                     `;
                 });
         }
@@ -574,7 +584,7 @@
             const tbody = document.getElementById('holdingsTableBody');
             
             if (!holdings || holdings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data">暂无持仓数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="no-data">暂无持仓数据</td></tr>';
                 return;
             }
             
@@ -584,6 +594,7 @@
                     <td class="cusip-cell">${holding.cusip}</td>
                     <td class="value-cell">$${formatNumber(holding.value)}</td>
                     <td class="shares-cell">${formatNumber(holding.shares)}</td>
+                    <td class="company-name-cell" title="${holding.companyName || 'N/A'}">${holding.companyDisplayName || holding.companyName || 'N/A'}</td>
                     <td>${holding.filing ? formatDate(holding.filing.filingDate) : 'N/A'}</td>
                     <td>${holding.filing ? formatDate(holding.filing.reportPeriod) : 'N/A'}</td>
                     <td style="font-family: monospace; font-size: 0.8rem;">${holding.filing ? holding.filing.accessionNumber : 'N/A'}</td>

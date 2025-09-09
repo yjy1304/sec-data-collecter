@@ -52,6 +52,14 @@ public class HTML13FParser {
             logger.error("❌ 解析HTML格式13F文件失败: " + e.getMessage());
         }
         
+        // 为每个holding设置CIK和公司名称（如果可用）
+        for (Holding holding : holdings) {
+            holding.setCik(cik);
+            if (filing.getCompanyName() != null && !filing.getCompanyName().trim().isEmpty()) {
+                holding.setCompanyName(filing.getCompanyName());
+            }
+        }
+        
         filing.setHoldings(holdings);
         return filing;
     }

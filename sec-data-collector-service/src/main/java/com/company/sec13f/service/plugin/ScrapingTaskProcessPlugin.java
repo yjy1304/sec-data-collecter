@@ -156,6 +156,8 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
         entityHolding.setCusip(modelHolding.getCusip());
         entityHolding.setValue(modelHolding.getValue());
         entityHolding.setShares(modelHolding.getShares());
+        entityHolding.setCik(modelHolding.getCik());
+        entityHolding.setCompanyName(modelHolding.getCompanyName());
         entityHolding.setCreatedAt(java.time.LocalDateTime.now());
         entityHolding.setUpdatedAt(java.time.LocalDateTime.now());
         return entityHolding;

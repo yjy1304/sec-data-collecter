@@ -174,16 +174,6 @@ curl -X POST "http://localhost:8080/api/scraping/scrape-batch"
 - 修改Java代码后需要重新编译：`mvn compile`
 - 使用IDE的Debug模式可以进行断点调试
 
-### 数据库操作
-```bash
-# 查看数据库信息
-./db_info.sh
-
-# 直接访问SQLite数据库
-sqlite3 sec13f.db
-.tables
-.schema filings
-```
 
 ## 📝 日志查看
 

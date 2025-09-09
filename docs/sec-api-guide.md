@@ -1002,7 +1002,6 @@ public String downloadWithRetry(String url) {
 ### 技术限制
 
 **系统限制**:
-- SQLite数据库：适合中小规模数据处理
 - 单机部署：不适合高并发访问
 - 实时分析：受SEC API速率限制
 

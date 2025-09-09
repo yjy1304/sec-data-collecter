@@ -20,7 +20,7 @@ sec-data-collector/                    # 父模块
 - Spring Boot Actuator (监控)
 
 **数据层：**
-- SQLite 数据库
+- MySQL 数据库
 - MyBatis ORM
 - 自定义DAO层
 
@@ -101,16 +101,6 @@ server:
 spring:
   application:
     name: sec-data-collector           # 应用名称
-
-# 自定义配置
-sec-collector:
-  database:
-    url: jdbc:sqlite:sec13f.db         # 数据库连接
-    max-connections: 10
-  scraping:
-    thread-pool-size: 3                # 爬虫线程数
-    request-delay-ms: 100              # 请求间隔
-```
 
 ## 模块说明
 

@@ -122,20 +122,24 @@
     
     <!-- 获取所有有持仓数据的公司列表 -->
     <select id="selectCompaniesWithHoldings" resultType="map">
-        SELECT DISTINCT f.cik, f.company_name as name, 
+        SELECT DISTINCT f.cik, 
+               COALESCE(c.display_name, f.company_name) as name, 
+               f.company_name as originalName,
+               c.display_name as displayName,
                COUNT(h.id) as holdingsCount, 
                MAX(f.filing_date) as latestFilingDate, 
                SUM(h.value) as totalValue 
         FROM filings f 
         LEFT JOIN holdings h ON f.id = h.filing_id 
+        LEFT JOIN companies c ON f.cik = c.cik
         WHERE 1=1 
         <if test="cik != null and cik != ''">
             AND f.cik LIKE CONCAT('%', #{cik}, '%')
         </if>
         <if test="name != null and name != ''">
-            AND f.company_name LIKE CONCAT('%', #{name}, '%')
+            AND (f.company_name LIKE CONCAT('%', #{name}, '%') OR c.display_name LIKE CONCAT('%', #{name}, '%'))
         </if>
-        GROUP BY f.cik, f.company_name 
+        GROUP BY f.cik, f.company_name, c.display_name
         HAVING COUNT(h.id) > 0 
         <choose>
             <when test="sortBy == 'cik'">
@@ -148,7 +152,7 @@
                 ORDER BY totalValue DESC
             </when>
             <otherwise>
-                ORDER BY f.company_name
+                ORDER BY COALESCE(c.display_name, f.company_name)
             </otherwise>
         </choose>
     </select>

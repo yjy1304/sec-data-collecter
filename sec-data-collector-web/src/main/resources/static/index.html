@@ -108,6 +108,18 @@
             color: white;
         }
         
+        .companies-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .companies-card .icon {
+            color: white;
+        }
+        
+        .companies-card h2, .companies-card p {
+            color: white;
+        }
+        
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2rem;
@@ -150,6 +162,12 @@
                 <h2>持仓信息查看</h2>
                 <p>查看已收集的机构持仓数据，分析投资组合变化，生成投资报告和趋势分析。</p>
             </div>
+            
+            <div class="menu-card companies-card" onclick="goToCompanyManagement()">
+                <div class="icon">🏢</div>
+                <h2>公司维护管理</h2>
+                <p>维护机构公司信息，管理CIK和公司名称映射，设置行业分类和基本信息。</p>
+            </div>
         </div>
         
         <div class="footer">
@@ -164,6 +182,10 @@
         
         function goToHoldingsView() {
             window.location.href = '/holdings.html';
+        }
+        
+        function goToCompanyManagement() {
+            window.location.href = '/companies.html';
         }
         
         // 添加页面加载动画

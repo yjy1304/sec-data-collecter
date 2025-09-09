@@ -2,7 +2,7 @@
 
 ## 🗄️ 数据库概览
 
-SEC 13F Parser使用SQLite作为数据存储，采用MyBatis ORM框架进行数据访问。数据库设计遵循关系型数据库的规范化原则，确保数据完整性和查询效率。
+SEC 13F Parser使用MySQL作为数据存储，采用MyBatis ORM框架进行数据访问。数据库设计遵循关系型数据库的规范化原则，确保数据完整性和查询效率。
 
 ## 📋 表结构设计
 
@@ -329,24 +329,4 @@ AND created_at < datetime('now', '-30 days');
 DELETE FROM scraping_tasks 
 WHERE status = 'FAILED' 
 AND created_at < datetime('now', '-7 days');
-```
-
-### 备份恢复
-
-1. **SQLite备份**
-```bash
-# 创建备份
-sqlite3 sec13f.db ".backup backup_$(date +%Y%m%d).db"
-
-# 恢复备份
-sqlite3 sec13f_restored.db ".restore backup_20250115.db"
-```
-
-2. **数据导出**
-```bash
-# 导出为SQL
-sqlite3 sec13f.db .dump > backup.sql
-
-# 导出为CSV
-sqlite3 -header -csv sec13f.db "select * from filings;" > filings.csv
 ```

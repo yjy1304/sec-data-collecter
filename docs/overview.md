@@ -13,7 +13,7 @@ SEC 13F Parser是一个全面的机构持仓分析系统，专门用于从美国
 - **任务管理**: 可视化的任务管理和进度监控系统
 
 ### 数据存储与管理
-- **持仓数据存储**: 使用SQLite数据库存储机构持仓信息
+- **持仓数据存储**: 使用MySQL数据库存储机构持仓信息
 - **MyBatis ORM**: 采用MyBatis框架实现类型安全的数据访问
 - **事务管理**: 确保数据一致性和完整性
 - **审计追踪**: 自动记录创建和更新时间
@@ -42,7 +42,7 @@ SEC 13F Parser是一个全面的机构持仓分析系统，专门用于从美国
 - **松耦合**: 通过接口和依赖注入实现组件间的松耦合
 
 ### 技术栈
-- **后端**: Java 8、Maven、Jetty、SQLite、MyBatis、Spring
+- **后端**: Java 8、Maven、Jetty、MySQL、MyBatis、Spring
 - **前端**: HTML5/CSS3/JavaScript、AJAX、响应式设计
 - **数据处理**: Jackson JSON、JAXB XML解析、Apache HttpClient
 

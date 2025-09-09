@@ -47,5 +47,6 @@
         <mapper resource="mapper/FilingMapper.xml"/>
         <mapper resource="mapper/HoldingMapper.xml"/>
         <mapper resource="mapper/TaskMapper.xml"/>
+        <mapper resource="mapper/CompanyMapper.xml"/>
     </mappers>
 </configuration>

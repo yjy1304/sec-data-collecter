@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a comprehensive SEC 13F filing parser and analysis system that scrapes real data from the SEC EDGAR database, stores it in a local SQLite database, and provides a web-based interface for querying and analyzing institutional investment holdings.
+This is a comprehensive SEC 13F filing parser and analysis system that scrapes real data from the SEC EDGAR database, stores it in a MySQL database, and provides a web-based interface for querying and analyzing institutional investment holdings.
 
 ### Key Features
 - Real-time data scraping from SEC EDGAR official API (data.sec.gov)
-- SQLite database storage with MyBatis ORM framework
+- MySQL database storage with MyBatis ORM framework
 - Multi-module Maven architecture with Spring Boot
 - Web-based analysis interface with modern HTML/CSS/JS frontend
 - Batch processing and task management system
@@ -43,7 +43,7 @@ src/main/java/com/company/sec13f/parser/  # Legacy monolith (being migrated)
 - **Spring Boot 2.7.12** (NEW - primary framework)
 - **Spring MVC** for REST APIs (NEW - replacing Servlets)
 - Jetty 9.4.51 embedded web server (LEGACY)
-- SQLite 3.42.0 database
+- MySQL 8.0+ database
 - MyBatis 3.5.13 ORM framework
 - Apache HttpClient 4.5.13 for web scraping
 - Jackson 2.15.2 for JSON processing
@@ -57,9 +57,10 @@ src/main/java/com/company/sec13f/parser/  # Legacy monolith (being migrated)
 - Real-time task progress monitoring
 
 **Database:**
-- SQLite for local storage
+- MySQL 8.0+ for data storage
 - MyBatis for type-safe database operations
 - Connection pooling and transaction management
+- HikariCP for high-performance connection pooling
 
 ## Database Schema
 
@@ -68,49 +69,67 @@ src/main/java/com/company/sec13f/parser/  # Legacy monolith (being migrated)
 **filings** - SEC 13F filing metadata
 ```sql
 CREATE TABLE filings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cik TEXT NOT NULL,                    -- SEC Central Index Key
-    company_name TEXT NOT NULL,           -- Institution name
-    filing_type TEXT NOT NULL,            -- Always "13F-HR"
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    cik VARCHAR(50) NOT NULL,             -- SEC Central Index Key
+    company_name VARCHAR(500) NOT NULL,   -- Institution name
+    filing_type VARCHAR(50) NOT NULL,     -- Always "13F-HR"
     filing_date DATE NOT NULL,            -- Reporting date
-    accession_number TEXT NOT NULL,       -- SEC accession number
-    form_file TEXT NOT NULL,              -- Original file name
+    report_period DATE,                   -- Report period date
+    accession_number VARCHAR(100) NOT NULL, -- SEC accession number
+    form_file VARCHAR(200) NOT NULL,      -- Original file name
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(accession_number, form_file)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_accession_form (accession_number, form_file),
+    INDEX idx_cik (cik),
+    INDEX idx_filing_date (filing_date)
 );
 ```
 
 **holdings** - Individual stock positions
 ```sql
 CREATE TABLE holdings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filing_id INTEGER NOT NULL,           -- Reference to filings.id
-    name_of_issuer TEXT NOT NULL,         -- Company name (e.g., "Apple Inc")
-    cusip TEXT NOT NULL,                  -- CUSIP identifier
-    value DECIMAL(15,2),                  -- Market value in thousands USD
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    filing_id BIGINT NOT NULL,            -- Reference to filings.id
+    name_of_issuer VARCHAR(500) NOT NULL, -- Company name (e.g., "Apple Inc")
+    title_of_class VARCHAR(200),          -- Security title/class
+    cusip VARCHAR(20) NOT NULL,           -- CUSIP identifier
+    value DECIMAL(18,2),                  -- Market value in thousands USD
     shares BIGINT,                        -- Number of shares held
+    shares_prn_type VARCHAR(10),          -- Share/Principal type (SH/PRN)
+    put_call VARCHAR(10),                 -- Put/Call indicator
+    investment_discretion VARCHAR(10),    -- Investment discretion
+    voting_authority_sole BIGINT,         -- Sole voting authority
+    voting_authority_shared BIGINT,       -- Shared voting authority  
+    voting_authority_none BIGINT,         -- No voting authority
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (filing_id) REFERENCES filings(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (filing_id) REFERENCES filings(id) ON DELETE CASCADE,
+    INDEX idx_filing_id (filing_id),
+    INDEX idx_cusip (cusip),
+    INDEX idx_issuer (name_of_issuer)
 );
 ```
 
-**scraping_tasks** - Task management and monitoring
+**tasks** - Task management and monitoring
 ```sql
-CREATE TABLE scraping_tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id TEXT NOT NULL UNIQUE,         -- Unique task identifier
-    cik TEXT NOT NULL,                    -- Target institution CIK
-    company_name TEXT NOT NULL,           -- Institution name
-    status TEXT NOT NULL,                 -- PENDING/RUNNING/COMPLETED/FAILED
+CREATE TABLE tasks (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id VARCHAR(100) NOT NULL UNIQUE, -- Unique task identifier
+    task_type VARCHAR(50) NOT NULL,       -- Task type (SCRAP_HOLDING, etc.)
+    task_parameters TEXT,                 -- JSON parameters for the task
+    status VARCHAR(20) NOT NULL,          -- PENDING/RUNNING/COMPLETED/FAILED
     message TEXT,                         -- Status message
     error_message TEXT,                   -- Error details if failed
-    start_time TIMESTAMP,                 -- Task start time
-    end_time TIMESTAMP,                   -- Task completion time
-    saved_filings INTEGER DEFAULT 0,      -- Number of filings processed
+    retry_times INT DEFAULT 0,            -- Number of retry attempts
+    start_time TIMESTAMP NULL,            -- Task start time
+    end_time TIMESTAMP NULL,              -- Task completion time
+    duration_seconds BIGINT,              -- Task duration in seconds
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_task_id (task_id),
+    INDEX idx_status (status),
+    INDEX idx_task_type (task_type),
+    INDEX idx_created_at (created_at)
 );
 ```
 
@@ -195,6 +214,23 @@ CREATE TABLE scraping_tasks (
 ## Build and Deployment
 
 ### Development Setup
+
+**Prerequisites:**
+- MySQL 8.0+ server installed and running
+- Database: `sec_data_collector` created
+- MySQL user with appropriate permissions
+
+**Database Setup:**
+```bash
+# Connect to MySQL
+mysql -u root -p
+
+# Create database and user
+CREATE DATABASE sec_data_collector CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'sec_user'@'localhost' IDENTIFIED BY 'sec_password';
+GRANT ALL PRIVILEGES ON sec_data_collector.* TO 'sec_user'@'localhost';
+FLUSH PRIVILEGES;
+```
 
 **Multi-module Spring Boot build (NEW):**
 ```bash
@@ -317,8 +353,8 @@ GET /api/scraping/tasks
 ## Common Issues and Solutions
 
 ### Database Issues
-- **Connection errors:** Check SQLite file permissions
-- **Schema errors:** Run `MyBatisSessionFactory.initializeTables()`
+- **Connection errors:** Check MySQL connection settings and credentials
+- **Schema errors:** Verify MySQL database schema and table structures
 - **Transaction issues:** Ensure proper session management
 
 ### Scraping Issues  
@@ -362,3 +398,4 @@ GET /api/scraping/tasks
 ---
 
 **Note:** This project is for educational and research purposes. Users must comply with SEC website terms of service. All data comes from publicly available SEC EDGAR database.
+- 使用curl命令访问localhost时通过--noproxy "*"禁用代理

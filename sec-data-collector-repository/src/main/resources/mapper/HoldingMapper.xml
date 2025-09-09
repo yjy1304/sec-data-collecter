@@ -7,6 +7,8 @@
     <resultMap id="BaseResultMap" type="Holding">
         <id column="id" property="id" jdbcType="BIGINT"/>
         <result column="filing_id" property="filingId" jdbcType="BIGINT"/>
+        <result column="cik" property="cik" jdbcType="VARCHAR"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
         <result column="name_of_issuer" property="nameOfIssuer" jdbcType="VARCHAR"/>
         <result column="cusip" property="cusip" jdbcType="VARCHAR"/>
         <result column="value" property="value" jdbcType="DECIMAL"/>
@@ -27,20 +29,33 @@
         </association>
     </resultMap>
     
+    <resultMap id="WithFilingAndCompanyResultMap" type="Holding" extends="BaseResultMap">
+        <result column="company_display_name" property="companyDisplayName" jdbcType="VARCHAR"/>
+        <association property="filing" javaType="Filing">
+            <id column="f_id" property="id" jdbcType="BIGINT"/>
+            <result column="f_cik" property="cik" jdbcType="VARCHAR"/>
+            <result column="f_company_name" property="companyName" jdbcType="VARCHAR"/>
+            <result column="f_filing_date" property="filingDate" jdbcType="DATE"/>
+            <result column="f_report_period" property="reportPeriod" jdbcType="DATE"/>
+            <result column="f_accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
+            <result column="f_form_file" property="formFile" jdbcType="VARCHAR"/>
+        </association>
+    </resultMap>
+    
     <sql id="Base_Column_List">
-        id, filing_id, name_of_issuer, cusip, value, shares, created_at, updated_at
+        id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares, created_at, updated_at
     </sql>
     
     <insert id="insert" parameterType="Holding" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO holdings (filing_id, name_of_issuer, cusip, value, shares, created_at, updated_at)
-        VALUES (#{filingId}, #{nameOfIssuer}, #{cusip}, #{value}, #{shares}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO holdings (filing_id, cik, company_name, name_of_issuer, cusip, value, shares, created_at, updated_at)
+        VALUES (#{filingId}, #{cik}, #{companyName}, #{nameOfIssuer}, #{cusip}, #{value}, #{shares}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     </insert>
     
     <insert id="batchInsert" parameterType="list">
-        INSERT INTO holdings (filing_id, name_of_issuer, cusip, value, shares, created_at, updated_at)
+        INSERT INTO holdings (filing_id, cik, company_name, name_of_issuer, cusip, value, shares, created_at, updated_at)
         VALUES
         <foreach collection="holdings" item="holding" separator=",">
-            (#{holding.filingId}, #{holding.nameOfIssuer}, #{holding.cusip}, 
+            (#{holding.filingId}, #{holding.cik}, #{holding.companyName}, #{holding.nameOfIssuer}, #{holding.cusip}, 
              #{holding.value}, #{holding.shares}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         </foreach>
     </insert>
@@ -85,6 +100,7 @@
     
     <update id="update" parameterType="Holding">
         UPDATE holdings SET 
+            cik = #{cik}, company_name = #{companyName}, 
             name_of_issuer = #{nameOfIssuer}, cusip = #{cusip}, 
             value = #{value}, shares = #{shares}, updated_at = CURRENT_TIMESTAMP
         WHERE id = #{id}
@@ -155,11 +171,15 @@
     </select>
     
     <!-- 根据CIK查询持仓用于导出 -->
-    <select id="selectByCikWithFilingForExport" parameterType="String" resultMap="WithFilingResultMap">
-        SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
-               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
+    <select id="selectByCikWithFilingForExport" parameterType="String" resultMap="WithFilingAndCompanyResultMap">
+        SELECT h.*, 
+               f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
+               f.filing_date as f_filing_date, f.report_period as f_report_period, 
+               f.accession_number as f_accession_number, f.form_file as f_form_file,
+               COALESCE(c.display_name, f.company_name) as company_display_name
         FROM holdings h
         JOIN filings f ON h.filing_id = f.id
+        LEFT JOIN companies c ON f.cik = c.cik
         WHERE f.cik = #{cik}
         ORDER BY h.value DESC
     </select>
@@ -216,11 +236,15 @@
     </select>
     
     <!-- 根据CIK查询持仓（带Filing信息和筛选条件，支持日期筛选和报告期间筛选） -->
-    <select id="selectByCikWithFilingAndReportPeriodFiltered" parameterType="map" resultMap="WithFilingResultMap">
-        SELECT h.*, f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
-               f.filing_date as f_filing_date, f.report_period as f_report_period, f.accession_number as f_accession_number, f.form_file as f_form_file
+    <select id="selectByCikWithFilingAndReportPeriodFiltered" parameterType="map" resultMap="WithFilingAndCompanyResultMap">
+        SELECT h.*, 
+               f.id as f_id, f.cik as f_cik, f.company_name as f_company_name,
+               f.filing_date as f_filing_date, f.report_period as f_report_period, 
+               f.accession_number as f_accession_number, f.form_file as f_form_file,
+               COALESCE(c.display_name, f.company_name) as company_display_name
         FROM holdings h
         JOIN filings f ON h.filing_id = f.id
+        LEFT JOIN companies c ON f.cik = c.cik
         WHERE f.cik = #{cik}
         <if test="filingDateFrom != null and filingDateFrom != ''">
             AND f.filing_date &gt;= #{filingDateFrom}

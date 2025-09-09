@@ -11,6 +11,8 @@ public class Holding {
     
     private Long id;
     private Long filingId;
+    private String cik;
+    private String companyName;
     private String nameOfIssuer;
     private String cusip;
     private BigDecimal value;
@@ -21,13 +23,18 @@ public class Holding {
     // 关联的Filing信息（用于联合查询）
     private Filing filing;
     
+    // 公司显示名称（从companies表关联获取）
+    private String companyDisplayName;
+    
     // 构造方法
     public Holding() {
     }
     
-    public Holding(Long filingId, String nameOfIssuer, String cusip, 
+    public Holding(Long filingId, String cik, String companyName, String nameOfIssuer, String cusip, 
                    BigDecimal value, Long shares) {
         this.filingId = filingId;
+        this.cik = cik;
+        this.companyName = companyName;
         this.nameOfIssuer = nameOfIssuer;
         this.cusip = cusip;
         this.value = value;
@@ -49,6 +56,22 @@ public class Holding {
     
     public void setFilingId(Long filingId) {
         this.filingId = filingId;
+    }
+    
+    public String getCik() {
+        return cik;
+    }
+    
+    public void setCik(String cik) {
+        this.cik = cik;
+    }
+    
+    public String getCompanyName() {
+        return companyName;
+    }
+    
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
     }
     
     public String getNameOfIssuer() {
@@ -107,11 +130,21 @@ public class Holding {
         this.filing = filing;
     }
     
+    public String getCompanyDisplayName() {
+        return companyDisplayName;
+    }
+    
+    public void setCompanyDisplayName(String companyDisplayName) {
+        this.companyDisplayName = companyDisplayName;
+    }
+    
     @Override
     public String toString() {
         return "Holding{" +
                 "id=" + id +
                 ", filingId=" + filingId +
+                ", cik='" + cik + '\'' +
+                ", companyName='" + companyName + '\'' +
                 ", nameOfIssuer='" + nameOfIssuer + '\'' +
                 ", cusip='" + cusip + '\'' +
                 ", value=" + value +

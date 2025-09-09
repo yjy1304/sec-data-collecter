@@ -77,6 +77,14 @@ public class Enhanced13FXMLParser {
             }
         }
         
+        // 为每个holding设置CIK和公司名称（如果可用）
+        for (Holding holding : holdings) {
+            holding.setCik(cik);
+            if (filing.getCompanyName() != null && !filing.getCompanyName().trim().isEmpty()) {
+                holding.setCompanyName(filing.getCompanyName());
+            }
+        }
+        
         filing.setHoldings(holdings);
         logger.info("Total parsed " + holdings.size() + " holdings from 13F filing " + accessionNumber);
         

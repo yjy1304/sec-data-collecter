@@ -9,6 +9,26 @@ public class Holding {
     private BigDecimal value;
     private Long shares;
 
+    private String cik;
+
+    private String companyName;
+
+    public String getCik() {
+        return cik;
+    }
+
+    public void setCik(String cik) {
+        this.cik = cik;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
     public Holding() {}
 
     public Holding(String nameOfIssuer, String cusip, BigDecimal value, Long shares) {

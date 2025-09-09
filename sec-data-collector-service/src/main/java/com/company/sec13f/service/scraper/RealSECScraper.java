@@ -685,6 +685,35 @@ public class RealSECScraper implements Closeable {
                     String fileDate = source.path("file_date").asText();
                     String xsl = source.path("xsl").asText();
                     
+                    // 从display_names字段解析CIK和公司名称
+                    String recordCik = null;
+                    String companyName = null;
+                    JsonNode displayNames = source.path("display_names");
+                    if (displayNames.isArray() && displayNames.size() > 0) {
+                        String displayName = displayNames.get(0).asText();
+                        logger.debug("📋 从display_names提取到: " + displayName);
+                        
+                        // display_names格式通常为: "COMPANY NAME (CIK 0001234567)"
+                        if (displayName.contains("(CIK ") && displayName.endsWith(")")) {
+                            int cikStart = displayName.lastIndexOf("(CIK ") + 5;
+                            int cikEnd = displayName.lastIndexOf(")");
+                            if (cikStart < cikEnd) {
+                                recordCik = displayName.substring(cikStart, cikEnd).trim();
+                                companyName = displayName.substring(0, displayName.lastIndexOf("(CIK ")).trim();
+                                logger.debug("✅ 解析得到 CIK: " + recordCik + ", 公司名称: " + companyName);
+                            }
+                        } else {
+                            // 如果格式不符合预期，使用整个display_names作为公司名称，CIK使用查询参数
+                            companyName = displayName;
+                            recordCik = cik;
+                            logger.debug("⚠️ display_names格式异常，使用查询CIK: " + recordCik + ", 公司名称: " + companyName);
+                        }
+                    } else {
+                        // 如果没有display_names，使用查询参数
+                        recordCik = cik;
+                        logger.debug("⚠️ 未找到display_names，使用查询CIK: " + recordCik);
+                    }
+                    
                     // 从_id中解析文件名: accessionNumber:fileName
                     String[] idParts = _id.split(":");
                     if (idParts.length == 2) {
@@ -692,9 +721,13 @@ public class RealSECScraper implements Closeable {
                         String fileName = idParts[1];
                         
                         Filing filing = new Filing();
-                        filing.setCik(cik);
+                        filing.setCik(recordCik); // 使用从display_names解析的CIK
                         filing.setAccessionNumber(accessionNumber);
                         filing.setFilingType(form);
+                        // 设置从display_names解析到的公司名称
+                        if (companyName != null && !companyName.trim().isEmpty()) {
+                            filing.setCompanyName(companyName);
+                        }
                         
                         // 解析文件日期作为filing date
                         if (fileDate != null && !fileDate.isEmpty()) {
@@ -717,8 +750,8 @@ public class RealSECScraper implements Closeable {
                         // 设置form_file和其他字段用于后续URL构建
                         filing.setFormFile(fileName);
                         
-                        // 获取持仓数据
-                        List<Holding> holdings = getHoldingsFromSearchResult(cik, accessionNumber, fileName, xsl);
+                        // 获取持仓数据，传入从display_names解析的CIK和公司名称
+                        List<Holding> holdings = getHoldingsFromSearchResult(recordCik, companyName, accessionNumber, fileName, xsl);
                         filing.setHoldings(holdings);
                         
                         filings.add(filing);
@@ -726,7 +759,19 @@ public class RealSECScraper implements Closeable {
                 }
             }
             
-            logger.info("通过搜索API找到 " + filings.size() + " 个13F文件，CIK: " + cik);
+            logger.info("📊 通过搜索API找到 " + filings.size() + " 个13F文件");
+            // 记录解析到的不同机构信息
+            if (!filings.isEmpty()) {
+                logger.info("📋 包含以下机构的持仓数据:");
+                filings.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(f -> f.getCik() + ":" + f.getCompanyName()))
+                    .forEach((key, groupFilings) -> {
+                        String[] parts = key.split(":", 2);
+                        String parsedCik = parts[0];
+                        String parsedCompanyName = parts.length > 1 ? parts[1] : "未知";
+                        logger.info("  🏢 CIK: " + parsedCik + ", 公司: " + parsedCompanyName + " (" + groupFilings.size() + " 个文件)");
+                    });
+            }
             return filings;
             
         } catch (Exception e) {
@@ -738,7 +783,7 @@ public class RealSECScraper implements Closeable {
     /**
      * 根据搜索API结果获取持仓数据
      */
-    private List<Holding> getHoldingsFromSearchResult(String cik, String accessionNumber, String fileName, String xsl) throws IOException, InterruptedException {
+    private List<Holding> getHoldingsFromSearchResult(String cik, String companyName, String accessionNumber, String fileName, String xsl) throws IOException, InterruptedException {
         rateLimitRequest();
         
         // 构建完整的持仓文件URL
@@ -754,6 +799,17 @@ public class RealSECScraper implements Closeable {
                 // 使用智能格式检测和相应的解析器解析持仓数据
                 Filing tempFiling = parse13FContent(xmlContent, accessionNumber, cik);
                 List<Holding> holdings = (tempFiling != null) ? tempFiling.getHoldings() : new ArrayList<>();
+                
+                // 为每个holding设置CIK和公司名称
+                if (holdings != null) {
+                    for (Holding holding : holdings) {
+                        holding.setCik(cik);
+                        if (companyName != null && !companyName.trim().isEmpty()) {
+                            holding.setCompanyName(companyName);
+                        }
+                    }
+                }
+                
                 logger.info("✅ 成功解析 " + holdings.size() + " 条持仓记录");
                 return holdings;
             }
