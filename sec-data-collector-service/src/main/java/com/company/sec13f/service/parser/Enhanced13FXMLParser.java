@@ -55,6 +55,12 @@ public class Enhanced13FXMLParser {
                     filing.setFilingDate(filingDate);
                 }
                 
+                // 提取Report Period
+                String reportPeriod = extractReportPeriod(doc, content);
+                if (reportPeriod != null) {
+                    filing.setReportPeriod(reportPeriod);
+                }
+                
                 // 解析持仓信息
                 holdings = parseHoldingsFromDOM(doc);
                 logger.info("DOM parsing extracted " + holdings.size() + " holdings");
@@ -73,6 +79,14 @@ public class Enhanced13FXMLParser {
                 LocalDate filingDate = extractFilingDateWithRegex(content);
                 if (filingDate != null) {
                     filing.setFilingDate(filingDate);
+                }
+            }
+            
+            // 如果还是没有报告期间，尝试从内容中提取
+            if (filing.getReportPeriod() == null) {
+                String reportPeriod = extractReportPeriodWithRegex(content);
+                if (reportPeriod != null) {
+                    filing.setReportPeriod(reportPeriod);
                 }
             }
         }
@@ -345,8 +359,8 @@ public class Enhanced13FXMLParser {
      * 从DOM提取Filing Date
      */
     private static LocalDate extractFilingDate(Document doc, String content) {
-        // 尝试从XML元素中提取日期
-        String[] dateTags = {"filingDate", "reportDate", "periodOfReport", "date", "asOfDate"};
+        // 尝试从XML元素中提取申报日期（优先级：filingDate > reportDate > date）
+        String[] dateTags = {"filingDate", "reportDate", "date", "asOfDate"};
         
         for (String tag : dateTags) {
             NodeList nodes = doc.getElementsByTagName(tag);
@@ -360,6 +374,27 @@ public class Enhanced13FXMLParser {
         }
         
         return null;
+    }
+    
+    /**
+     * 从DOM提取Report Period（报告期间）
+     */
+    private static String extractReportPeriod(Document doc, String content) {
+        // 尝试从XML元素中提取报告期间（优先级：periodOfReport > periodEnd > reportPeriod）
+        String[] periodTags = {"periodOfReport", "periodEnd", "reportPeriod", "periodEnding"};
+        
+        for (String tag : periodTags) {
+            NodeList nodes = doc.getElementsByTagName(tag);
+            if (nodes.getLength() > 0) {
+                String dateText = nodes.item(0).getTextContent();
+                if (dateText != null && !dateText.trim().isEmpty()) {
+                    return dateText.trim();
+                }
+            }
+        }
+        
+        // 如果DOM解析没有找到，尝试正则表达式
+        return extractReportPeriodWithRegex(content);
     }
     
     /**
@@ -459,6 +494,45 @@ public class Enhanced13FXMLParser {
         
         // 如果找不到日期，使用当前日期的前一个季度末
         return LocalDate.now().minusMonths(3);
+    }
+    
+    /**
+     * 使用正则表达式提取Report Period
+     */
+    private static String extractReportPeriodWithRegex(String content) {
+        Pattern[] periodPatterns = {
+            Pattern.compile("<periodOfReport>\\s*(.*?)\\s*</periodOfReport>", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("<periodEnd>\\s*(.*?)\\s*</periodEnd>", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("<reportPeriod>\\s*(.*?)\\s*</reportPeriod>", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("<periodEnding>\\s*(.*?)\\s*</periodEnding>", Pattern.CASE_INSENSITIVE),
+            // 从文本中查找报告期间模式
+            Pattern.compile("PERIOD\\s+ENDING[:\\s]+(\\d{4}-\\d{2}-\\d{2})", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("PERIOD\\s+OF\\s+REPORT[:\\s]+(\\d{4}-\\d{2}-\\d{2})", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("FOR\\s+THE\\s+PERIOD\\s+ENDED[:\\s]+(\\d{4}-\\d{2}-\\d{2})", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("CONFORMED\\s+PERIOD\\s+OF\\s+REPORT[:\\s]+(\\d{8})", Pattern.CASE_INSENSITIVE)
+        };
+        
+        for (Pattern pattern : periodPatterns) {
+            Matcher matcher = pattern.matcher(content);
+            if (matcher.find()) {
+                String dateText = matcher.group(1).trim();
+                
+                // 处理YYYYMMDD格式，转换为YYYY-MM-DD格式
+                if (dateText.length() == 8 && dateText.matches("\\d{8}")) {
+                    String year = dateText.substring(0, 4);
+                    String month = dateText.substring(4, 6);
+                    String day = dateText.substring(6, 8);
+                    dateText = year + "-" + month + "-" + day;
+                }
+                
+                // 验证日期格式是否有效
+                if (parseDate(dateText) != null) {
+                    return dateText;
+                }
+            }
+        }
+        
+        return null; // 如果找不到报告期间，返回null
     }
     
     /**

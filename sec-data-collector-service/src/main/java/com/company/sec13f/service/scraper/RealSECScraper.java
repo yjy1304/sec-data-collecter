@@ -80,6 +80,7 @@ public class RealSECScraper implements Closeable {
             
             JsonNode forms = recentFilings.path("form");
             JsonNode filingDates = recentFilings.path("filingDate");
+            JsonNode reportDates = recentFilings.path("reportDate");
             JsonNode accessionNumbers = recentFilings.path("accessionNumber");
             
             for (int i = 0; i < forms.size(); i++) {
@@ -90,6 +91,15 @@ public class RealSECScraper implements Closeable {
                     filing.setAccessionNumber(accessionNumbers.get(i).asText());
                     filing.setFilingDate(LocalDate.parse(filingDates.get(i).asText()));
                     filing.setFilingType(form);
+                    
+                    // 设置报告期间（如果有）
+                    if (reportDates.size() > i && !reportDates.get(i).isNull()) {
+                        String reportDateStr = reportDates.get(i).asText();
+                        if (reportDateStr != null && !reportDateStr.isEmpty()) {
+                            filing.setReportPeriod(reportDateStr);
+                        }
+                    }
+                    
                     filings.add(filing);
                 }
             }
@@ -141,7 +151,7 @@ public class RealSECScraper implements Closeable {
                 LocalDate effectivenessDate = extractEffectivenessDate(submissionContent);
                 
                 // 从提交文件头部提取CONFORMED PERIOD OF REPORT作为reportPeriod
-                LocalDate reportPeriod = extractConformedPeriodOfReport(submissionContent);
+                String reportPeriod = extractConformedPeriodOfReport(submissionContent);
                 
                 // 直接从提交文件中解析Information Table部分的持仓信息
                 String informationTableXml = extractInformationTableContent(submissionContent);
@@ -327,7 +337,7 @@ public class RealSECScraper implements Closeable {
     /**
      * 从13F提交文件头部提取CONFORMED PERIOD OF REPORT作为reportPeriod
      */
-    private LocalDate extractConformedPeriodOfReport(String submissionContent) {
+    private String extractConformedPeriodOfReport(String submissionContent) {
         try {
             String[] lines = submissionContent.split("\n");
             
@@ -339,18 +349,25 @@ public class RealSECScraper implements Closeable {
                     String dateStr = trimmedLine.substring("CONFORMED PERIOD OF REPORT:".length()).trim();
                     
                     try {
-                        // SEC日期格式通常为 YYYYMMDD
+                        // SEC日期格式通常为 YYYYMMDD，转换为YYYY-MM-DD
                         if (dateStr.length() == 8 && dateStr.matches("\\d{8}")) {
-                            LocalDate reportPeriod = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
-                            logger.debug("📅 提取到CONFORMED PERIOD OF REPORT: " + reportPeriod);
-                            return reportPeriod;
+                            String year = dateStr.substring(0, 4);
+                            String month = dateStr.substring(4, 6);
+                            String day = dateStr.substring(6, 8);
+                            String formattedDate = year + "-" + month + "-" + day;
+                            
+                            // 验证日期格式
+                            LocalDate.parse(formattedDate);
+                            logger.debug("📅 提取到CONFORMED PERIOD OF REPORT: " + formattedDate);
+                            return formattedDate;
                         }
                         
                         // 如果是其他格式，尝试YYYY-MM-DD
                         if (dateStr.length() == 10 && dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                            LocalDate reportPeriod = LocalDate.parse(dateStr);
-                            logger.debug("📅 提取到CONFORMED PERIOD OF REPORT: " + reportPeriod);
-                            return reportPeriod;
+                            // 验证日期格式
+                            LocalDate.parse(dateStr);
+                            logger.debug("📅 提取到CONFORMED PERIOD OF REPORT: " + dateStr);
+                            return dateStr;
                         }
                         
                     } catch (Exception e) {
@@ -489,7 +506,7 @@ public class RealSECScraper implements Closeable {
      * 解析13F文件内容 - 使用增强的XML解析器，并设置指定的生效日期、报告期间和form_file
      */
     private Filing parse13FContentWithDateAndReportPeriod(String content, String accessionNumber, String cik, 
-                                                          LocalDate effectivenessDate, LocalDate reportPeriod, String formFile) {
+                                                          LocalDate effectivenessDate, String reportPeriod, String formFile) {
         Filing filing;
         
         // 检测内容格式并使用合适的解析器
@@ -738,13 +755,9 @@ public class RealSECScraper implements Closeable {
                             }
                         }
                         
-                        // 解析报告期间
+                        // 设置报告期间（直接存储字符串）
                         if (periodEnding != null && !periodEnding.isEmpty()) {
-                            try {
-                                filing.setReportPeriod(LocalDate.parse(periodEnding));
-                            } catch (Exception e) {
-                                logger.debug("解析report period失败: " + periodEnding);
-                            }
+                            filing.setReportPeriod(periodEnding);
                         }
                         
                         // 设置form_file和其他字段用于后续URL构建
@@ -850,27 +863,7 @@ public class RealSECScraper implements Closeable {
         return String.valueOf(Long.parseLong(cik));
     }
 
-    /**
-     * 使用新的搜索API获取最新的13F文件
-     */
-    public Filing getLatest13FWithSearchAPI(String cik) throws IOException, InterruptedException {
-        List<Filing> filings = getCompanyFilingsWithSearchAPI(cik);
-        if (filings.isEmpty()) {
-            throw new IOException("No 13F filings found for CIK: " + cik);
-        }
-        
-        // 按文件日期排序，返回最新的
-        filings.sort((f1, f2) -> {
-            LocalDate d1 = f1.getFilingDate();
-            LocalDate d2 = f2.getFilingDate();
-            if (d1 == null && d2 == null) return 0;
-            if (d1 == null) return 1;
-            if (d2 == null) return -1;
-            return d2.compareTo(d1);
-        });
-        
-        return filings.get(0);
-    }
+
 
     /**
      * 检测内容是否为HTML格式

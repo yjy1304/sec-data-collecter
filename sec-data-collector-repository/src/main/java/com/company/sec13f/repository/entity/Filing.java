@@ -15,7 +15,7 @@ public class Filing {
     private String companyName;
     private String filingType;
     private LocalDate filingDate;
-    private LocalDate reportPeriod;
+    private String reportPeriod;
     private String accessionNumber;
     private String formFile;
     private LocalDateTime createdAt;
@@ -79,11 +79,11 @@ public class Filing {
         this.filingDate = filingDate;
     }
     
-    public LocalDate getReportPeriod() {
+    public String getReportPeriod() {
         return reportPeriod;
     }
     
-    public void setReportPeriod(LocalDate reportPeriod) {
+    public void setReportPeriod(String reportPeriod) {
         this.reportPeriod = reportPeriod;
     }
     

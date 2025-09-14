@@ -13,7 +13,7 @@ public class Filing {
     private LocalDate filingDate;
     private String accessionNumber;
     private String formFile;
-    private LocalDate reportPeriod;
+    private String reportPeriod;
     private List<Holding> holdings;
 
     // Constructors
@@ -86,11 +86,11 @@ public class Filing {
         this.holdings = holdings;
     }
 
-    public LocalDate getReportPeriod() {
+    public String getReportPeriod() {
         return reportPeriod;
     }
 
-    public void setReportPeriod(LocalDate reportPeriod) {
+    public void setReportPeriod(String reportPeriod) {
         this.reportPeriod = reportPeriod;
     }
 

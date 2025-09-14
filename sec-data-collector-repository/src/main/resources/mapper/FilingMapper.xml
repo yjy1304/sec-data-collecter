@@ -11,7 +11,7 @@
         <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
         <result column="filing_type" property="filingType" jdbcType="VARCHAR"/>
         <result column="filing_date" property="filingDate" jdbcType="DATE"/>
-        <result column="report_period" property="reportPeriod" jdbcType="DATE"/>
+        <result column="report_period" property="reportPeriod" jdbcType="VARCHAR"/>
         <result column="accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
         <result column="form_file" property="formFile" jdbcType="VARCHAR"/>
         <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
@@ -93,6 +93,7 @@
         SET company_name = #{companyName},
             filing_type = #{filingType},
             filing_date = #{filingDate},
+            report_period = #{reportPeriod},
             form_file = #{formFile},
             updated_at = CURRENT_TIMESTAMP
         WHERE id = #{id}
@@ -177,6 +178,15 @@
     <!-- 统计不同公司数量 -->
     <select id="countDistinctCompanies" resultType="long">
         SELECT COUNT(DISTINCT cik) FROM filings
+    </select>
+    
+    <!-- 根据CIK获取最新的报告期间 -->
+    <select id="selectLatestReportPeriodByCik" parameterType="String" resultType="String">
+        SELECT report_period 
+        FROM filings 
+        WHERE cik = #{cik} AND report_period IS NOT NULL
+        ORDER BY report_period DESC 
+        LIMIT 1
     </select>
     
 </mapper>

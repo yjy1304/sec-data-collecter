@@ -23,7 +23,7 @@
             <result column="f_cik" property="cik" jdbcType="VARCHAR"/>
             <result column="f_company_name" property="companyName" jdbcType="VARCHAR"/>
             <result column="f_filing_date" property="filingDate" jdbcType="DATE"/>
-            <result column="f_report_period" property="reportPeriod" jdbcType="DATE"/>
+            <result column="f_report_period" property="reportPeriod" jdbcType="VARCHAR"/>
             <result column="f_accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
             <result column="f_form_file" property="formFile" jdbcType="VARCHAR"/>
         </association>
@@ -36,7 +36,7 @@
             <result column="f_cik" property="cik" jdbcType="VARCHAR"/>
             <result column="f_company_name" property="companyName" jdbcType="VARCHAR"/>
             <result column="f_filing_date" property="filingDate" jdbcType="DATE"/>
-            <result column="f_report_period" property="reportPeriod" jdbcType="DATE"/>
+            <result column="f_report_period" property="reportPeriod" jdbcType="VARCHAR"/>
             <result column="f_accession_number" property="accessionNumber" jdbcType="VARCHAR"/>
             <result column="f_form_file" property="formFile" jdbcType="VARCHAR"/>
         </association>

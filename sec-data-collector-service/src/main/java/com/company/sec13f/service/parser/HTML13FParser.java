@@ -42,10 +42,16 @@ public class HTML13FParser {
             logger.info("🎯 从HTML表格中解析出 " + holdings.size() + " 条持仓记录");
             
             // 尝试提取报告期间
-            LocalDate reportPeriod = extractReportPeriod(htmlContent);
+            String reportPeriod = extractReportPeriod(htmlContent);
             if (reportPeriod != null) {
                 filing.setReportPeriod(reportPeriod);
-                filing.setFilingDate(reportPeriod); // 使用报告期间作为申报日期
+                // 尝试解析日期用于filing date
+                try {
+                    LocalDate reportDate = LocalDate.parse(reportPeriod);
+                    filing.setFilingDate(reportDate);
+                } catch (Exception e) {
+                    logger.debug("无法解析报告期间作为filing date: " + reportPeriod);
+                }
             }
             
         } catch (Exception e) {
@@ -274,7 +280,7 @@ public class HTML13FParser {
      * 从HTML内容中提取报告期间
      * 查找表格标题或其他位置的期间信息
      */
-    private static LocalDate extractReportPeriod(String htmlContent) {
+    private static String extractReportPeriod(String htmlContent) {
         try {
             // 查找期间相关的文本
             Pattern[] periodPatterns = {
@@ -292,15 +298,17 @@ public class HTML13FParser {
                     
                     // 处理不同的日期格式
                     if (dateStr.length() == 8 && dateStr.matches("\\d{8}")) {
-                        // YYYYMMDD格式
+                        // YYYYMMDD格式，转换为YYYY-MM-DD
                         String year = dateStr.substring(0, 4);
                         String month = dateStr.substring(4, 6);
                         String day = dateStr.substring(6, 8);
                         dateStr = year + "-" + month + "-" + day;
                     }
                     
+                    // 验证日期格式是否有效，但返回字符串
                     try {
-                        return LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                        LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                        return dateStr; // 返回格式化后的字符串
                     } catch (Exception e) {
                         logger.debug("❌ 解析日期失败: " + dateStr);
                     }

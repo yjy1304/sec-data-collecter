@@ -115,4 +115,11 @@ public interface FilingMapper {
      * @return 公司数量
      */
     long countDistinctCompanies();
+    
+    /**
+     * 根据CIK获取最新的报告期间
+     * @param cik 公司CIK
+     * @return 最新的报告期间
+     */
+    String selectLatestReportPeriodByCik(@Param("cik") String cik);
 }

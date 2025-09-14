@@ -142,6 +142,7 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
         entityFiling.setFilingDate(modelFiling.getFilingDate());
         entityFiling.setAccessionNumber(modelFiling.getAccessionNumber());
         entityFiling.setFormFile(modelFiling.getFormFile());
+        entityFiling.setReportPeriod(modelFiling.getReportPeriod());
         entityFiling.setCreatedAt(java.time.LocalDateTime.now());
         entityFiling.setUpdatedAt(java.time.LocalDateTime.now());
         return entityFiling;

@@ -54,11 +54,16 @@ public class HoldingsService {
                 return null;
             }
             
+            // 获取最新的报告期间
+            String latestReportPeriod = filingMapper.selectLatestReportPeriodByCik(cik);
+            
             result.put("cik", cik);
             result.put("companyName", latestFiling.getCompanyName());
             result.put("latestFilingDate", latestFiling.getFilingDate());
+            result.put("latestReportPeriod", latestReportPeriod);
             
             // 获取持仓数据，支持日期筛选和报告期间筛选
+            // 如果没有指定报告期间筛选，默认使用最新的报告期间
             Map<String, Object> params = new HashMap<>();
             params.put("cik", cik);
             params.put("minValue", minValue);
@@ -67,8 +72,15 @@ public class HoldingsService {
             params.put("sortOrder", sortOrder);
             params.put("filingDateFrom", filingDateFrom);
             params.put("filingDateTo", filingDateTo);
-            params.put("reportPeriodFrom", reportPeriodFrom);
-            params.put("reportPeriodTo", reportPeriodTo);
+            
+            // 如果没有指定报告期间筛选条件，默认只显示最新报告期间的数据
+            if (reportPeriodFrom == null && reportPeriodTo == null && latestReportPeriod != null) {
+                params.put("reportPeriodFrom", latestReportPeriod);
+                params.put("reportPeriodTo", latestReportPeriod);
+            } else {
+                params.put("reportPeriodFrom", reportPeriodFrom);
+                params.put("reportPeriodTo", reportPeriodTo);
+            }
             
             List<Holding> holdings = holdingMapper.selectByCikWithFilingAndReportPeriodFiltered(params);
             

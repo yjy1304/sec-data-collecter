@@ -398,4 +398,7 @@ GET /api/scraping/tasks
 ---
 
 **Note:** This project is for educational and research purposes. Users must comply with SEC website terms of service. All data comes from publicly available SEC EDGAR database.
-- 使用curl命令访问localhost时通过--noproxy "*"禁用代理
+
+
+**测试注意事项:**
+- 使用curl命令访问localhost时通过 --noproxy "*" 参数禁用代理
