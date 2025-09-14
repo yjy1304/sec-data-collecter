@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.sec13f.repository.mapper.CompanyMapper">
+    
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="Company">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="cik" property="cik" jdbcType="VARCHAR"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="display_name" property="displayName" jdbcType="VARCHAR"/>
+        <result column="industry" property="industry" jdbcType="VARCHAR"/>
+        <result column="sector" property="sector" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="LONGVARCHAR"/>
+        <result column="website" property="website" jdbcType="VARCHAR"/>
+        <result column="is_active" property="isActive" jdbcType="TINYINT"/>
+        <result column="last_filing_date" property="lastFilingDate" jdbcType="DATE"/>
+        <result column="total_filings" property="totalFilings" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    
+    <!-- 基础SQL片段 -->
+    <sql id="Base_Column_List">
+        id, cik, company_name, display_name, industry, sector, description, website, 
+        is_active, last_filing_date, total_filings, created_at, updated_at
+    </sql>
+    
+    <!-- 插入 -->
+    <insert id="insert" parameterType="Company" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO companies (
+            cik, company_name, display_name, industry, sector, description, website,
+            is_active, last_filing_date, total_filings, created_at, updated_at
+        ) VALUES (
+            #{cik}, #{companyName}, #{displayName}, #{industry}, #{sector}, #{description}, #{website},
+            #{isActive}, #{lastFilingDate}, #{totalFilings}, 
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+    
+    <!-- 批量插入 -->
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO companies (
+            cik, company_name, display_name, industry, sector, description, website,
+            is_active, last_filing_date, total_filings, created_at, updated_at
+        ) VALUES
+        <foreach collection="companies" item="company" separator=",">
+            (#{company.cik}, #{company.companyName}, #{company.displayName}, #{company.industry}, 
+             #{company.sector}, #{company.description}, #{company.website}, #{company.isActive}, 
+             #{company.lastFilingDate}, #{company.totalFilings}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        </foreach>
+    </insert>
+    
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE id = #{id}
+    </select>
+    
+    <!-- 根据CIK查询 -->
+    <select id="selectByCik" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE cik = #{cik}
+    </select>
+    
+    <!-- 根据公司名称查询（模糊搜索） -->
+    <select id="selectByCompanyName" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE company_name LIKE CONCAT('%', #{companyName}, '%')
+           OR display_name LIKE CONCAT('%', #{companyName}, '%')
+        ORDER BY company_name
+    </select>
+    
+    <!-- 查询所有活跃的公司 -->
+    <select id="selectActiveCompanies" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE is_active = 1
+        ORDER BY company_name
+    </select>
+    
+    <!-- 分页查询公司列表 -->
+    <select id="selectCompaniesWithPaging" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (company_name LIKE CONCAT('%', #{keyword}, '%') 
+                OR display_name LIKE CONCAT('%', #{keyword}, '%')
+                OR cik LIKE CONCAT('%', #{keyword}, '%')
+                OR industry LIKE CONCAT('%', #{keyword}, '%')
+                OR sector LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="isActive != null">
+            AND is_active = #{isActive}
+        </if>
+        <choose>
+            <when test="sortBy == 'cik'">
+                ORDER BY cik
+            </when>
+            <when test="sortBy == 'industry'">
+                ORDER BY industry
+            </when>
+            <when test="sortBy == 'sector'">
+                ORDER BY sector
+            </when>
+            <when test="sortBy == 'totalFilings'">
+                ORDER BY total_filings
+            </when>
+            <when test="sortBy == 'lastFilingDate'">
+                ORDER BY last_filing_date
+            </when>
+            <when test="sortBy == 'createdAt'">
+                ORDER BY created_at
+            </when>
+            <otherwise>
+                ORDER BY company_name
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="sortOrder == 'DESC'">
+                DESC
+            </when>
+            <otherwise>
+                ASC
+            </otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    
+    <!-- 统计公司总数 -->
+    <select id="countCompanies" resultType="long">
+        SELECT COUNT(*)
+        FROM companies
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (company_name LIKE CONCAT('%', #{keyword}, '%') 
+                OR display_name LIKE CONCAT('%', #{keyword}, '%')
+                OR cik LIKE CONCAT('%', #{keyword}, '%')
+                OR industry LIKE CONCAT('%', #{keyword}, '%')
+                OR sector LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="isActive != null">
+            AND is_active = #{isActive}
+        </if>
+    </select>
+    
+    <!-- 更新 -->
+    <update id="update" parameterType="Company">
+        UPDATE companies
+        SET company_name = #{companyName},
+            display_name = #{displayName},
+            industry = #{industry},
+            sector = #{sector},
+            description = #{description},
+            website = #{website},
+            is_active = #{isActive},
+            last_filing_date = #{lastFilingDate},
+            total_filings = #{totalFilings},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 更新公司的文件统计信息 -->
+    <update id="updateFilingStats">
+        UPDATE companies
+        SET total_filings = #{totalFilings},
+            last_filing_date = #{lastFilingDate},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE cik = #{cik}
+    </update>
+    
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="Long">
+        DELETE FROM companies WHERE id = #{id}
+    </delete>
+    
+    <!-- 根据CIK删除 -->
+    <delete id="deleteByCik" parameterType="String">
+        DELETE FROM companies WHERE cik = #{cik}
+    </delete>
+    
+    <!-- 检查CIK是否存在 -->
+    <select id="existsByCik" parameterType="String" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM companies
+        WHERE cik = #{cik}
+    </select>
+    
+    <!-- 统计活跃公司数量 -->
+    <select id="countActiveCompanies" resultType="long">
+        SELECT COUNT(*) FROM companies WHERE is_active = 1
+    </select>
+    
+    <!-- 统计总公司数量 -->
+    <select id="countAllCompanies" resultType="long">
+        SELECT COUNT(*) FROM companies
+    </select>
+    
+    <!-- 获取行业统计信息 -->
+    <select id="getIndustryStats" resultType="map">
+        SELECT industry, COUNT(*) as count, AVG(total_filings) as avgFilings
+        FROM companies 
+        WHERE industry IS NOT NULL AND industry != ''
+        GROUP BY industry 
+        ORDER BY count DESC
+    </select>
+    
+    <!-- 获取部门统计信息 -->
+    <select id="getSectorStats" resultType="map">
+        SELECT sector, COUNT(*) as count, AVG(total_filings) as avgFilings
+        FROM companies 
+        WHERE sector IS NOT NULL AND sector != ''
+        GROUP BY sector 
+        ORDER BY count DESC
+    </select>
+    
+    <!-- 根据行业查询公司 -->
+    <select id="selectByIndustry" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE industry = #{industry}
+        ORDER BY company_name
+    </select>
+    
+    <!-- 根据部门查询公司 -->
+    <select id="selectBySector" parameterType="String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE sector = #{sector}
+        ORDER BY company_name
+    </select>
+    
+    <!-- 获取最近有文件更新的公司 -->
+    <select id="selectRecentlyActiveCompanies" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM companies
+        WHERE last_filing_date >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND is_active = 1
+        ORDER BY last_filing_date DESC
+        LIMIT #{limit}
+    </select>
+    
+</mapper>
