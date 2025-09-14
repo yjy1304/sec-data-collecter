@@ -143,6 +143,36 @@ public class HoldingsService {
     }
     
     /**
+     * 获取所有报告期间（去重并倒序排列）
+     */
+    public List<String> getDistinctReportPeriods() {
+        try (SqlSession session = MyBatisSessionFactory.openSession()) {
+            FilingMapper filingMapper = session.getMapper(FilingMapper.class);
+            
+            return filingMapper.selectDistinctReportPeriods();
+            
+        } catch (Exception e) {
+            logger.error("Error getting distinct report periods", e);
+            throw new RuntimeException("Failed to get distinct report periods: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 根据CIK获取该公司的所有报告期间（去重并倒序排列）
+     */
+    public List<String> getDistinctReportPeriodsByCik(String cik) {
+        try (SqlSession session = MyBatisSessionFactory.openSession()) {
+            FilingMapper filingMapper = session.getMapper(FilingMapper.class);
+            
+            return filingMapper.selectDistinctReportPeriodsByCik(cik);
+            
+        } catch (Exception e) {
+            logger.error("Error getting distinct report periods for CIK: " + cik, e);
+            throw new RuntimeException("Failed to get distinct report periods for CIK: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
      * 获取公司持仓数据用于CSV导出
      */
     public List<Holding> getHoldingsForExport(String cik) {

@@ -122,4 +122,17 @@ public interface FilingMapper {
      * @return 最新的报告期间
      */
     String selectLatestReportPeriodByCik(@Param("cik") String cik);
+    
+    /**
+     * 获取所有报告期间（去重并倒序排列）
+     * @return 报告期间列表
+     */
+    List<String> selectDistinctReportPeriods();
+    
+    /**
+     * 根据CIK获取该公司的所有报告期间（去重并倒序排列）
+     * @param cik 公司CIK
+     * @return 报告期间列表
+     */
+    List<String> selectDistinctReportPeriodsByCik(@Param("cik") String cik);
 }

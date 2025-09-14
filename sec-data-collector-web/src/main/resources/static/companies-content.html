@@ -133,6 +133,117 @@
             padding: 40px;
             font-size: 1.1rem;
         }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+        
+        .close {
+            color: white;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        
+        .close:hover,
+        .close:focus {
+            opacity: 0.7;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            text-align: right;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .badge.success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge.secondary {
+            background-color: #6c757d;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -196,6 +307,59 @@
             </table>
         </div>
     </div>
+    
+    <!-- 添加/编辑公司模态框 -->
+    <div id="companyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">添加公司</h3>
+                <button class="close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="companyForm">
+                    <div class="form-group">
+                        <label for="cik">CIK *</label>
+                        <input type="text" id="cik" name="cik" required placeholder="请输入公司CIK">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyName">公司名称 *</label>
+                        <input type="text" id="companyName" name="companyName" required placeholder="请输入公司名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="displayName">显示名称</label>
+                        <input type="text" id="displayName" name="displayName" placeholder="请输入显示名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="industry">行业</label>
+                        <input type="text" id="industry" name="industry" placeholder="请输入行业">
+                    </div>
+                    <div class="form-group">
+                        <label for="sector">部门</label>
+                        <input type="text" id="sector" name="sector" placeholder="请输入部门">
+                    </div>
+                    <div class="form-group">
+                        <label for="website">网站</label>
+                        <input type="url" id="website" name="website" placeholder="请输入网站地址">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">描述</label>
+                        <textarea id="description" name="description" placeholder="请输入公司描述"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="isActive">状态</label>
+                        <select id="isActive" name="isActive">
+                            <option value="true">活跃</option>
+                            <option value="false">非活跃</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveCompany()">保存</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         let currentCompanies = [];
@@ -214,7 +378,7 @@
             url.searchParams.append('sortBy', 'companyName');
             url.searchParams.append('sortOrder', 'ASC');
             if (search) {
-                url.searchParams.append('search', search);
+                url.searchParams.append('keyword', search);
             }
             
             document.getElementById('companiesTableBody').innerHTML = 
@@ -289,20 +453,141 @@
             loadStats();
         }
         
-        // 添加公司模态框
+        // 全局变量
+        let currentEditingId = null;
+        
+        // 显示添加公司模态框
         function showAddModal() {
-            alert('添加公司功能正在开发中...');
+            currentEditingId = null;
+            document.getElementById('modalTitle').textContent = '添加公司';
+            document.getElementById('companyForm').reset();
+            document.getElementById('companyModal').style.display = 'block';
         }
         
-        // 编辑公司
+        // 显示编辑公司模态框
         function editCompany(id) {
-            alert('编辑公司功能正在开发中...');
+            currentEditingId = id;
+            document.getElementById('modalTitle').textContent = '编辑公司';
+            
+            // 获取公司信息
+            fetch(`/api/companies/${id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取公司信息失败');
+                    }
+                    return response.json();
+                })
+                .then(company => {
+                    // 填充表单
+                    document.getElementById('cik').value = company.cik || '';
+                    document.getElementById('companyName').value = company.companyName || '';
+                    document.getElementById('displayName').value = company.displayName || '';
+                    document.getElementById('industry').value = company.industry || '';
+                    document.getElementById('sector').value = company.sector || '';
+                    document.getElementById('website').value = company.website || '';
+                    document.getElementById('description').value = company.description || '';
+                    document.getElementById('isActive').value = company.isActive ? 'true' : 'false';
+                    
+                    document.getElementById('companyModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading company:', error);
+                    alert('获取公司信息失败: ' + error.message);
+                });
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('companyModal').style.display = 'none';
+            currentEditingId = null;
+        }
+        
+        // 保存公司
+        function saveCompany() {
+            const formData = new FormData(document.getElementById('companyForm'));
+            
+            // 构建公司对象
+            const company = {
+                cik: formData.get('cik').trim(),
+                companyName: formData.get('companyName').trim(),
+                displayName: formData.get('displayName').trim() || null,
+                industry: formData.get('industry').trim() || null,
+                sector: formData.get('sector').trim() || null,
+                website: formData.get('website').trim() || null,
+                description: formData.get('description').trim() || null,
+                isActive: formData.get('isActive') === 'true'
+            };
+            
+            // 验证必填字段
+            if (!company.cik || !company.companyName) {
+                alert('请填写CIK和公司名称！');
+                return;
+            }
+            
+            const url = currentEditingId ? `/api/companies/${currentEditingId}` : '/api/companies';
+            const method = currentEditingId ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(company)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || '操作失败');
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    closeModal();
+                    loadCompanies(); // 刷新列表
+                    loadStats(); // 刷新统计
+                } else {
+                    alert('操作失败: ' + (result.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving company:', error);
+                alert('操作失败: ' + error.message);
+            });
         }
         
         // 删除公司
         function deleteCompany(id) {
-            if (confirm('确定要删除这个公司吗？')) {
-                alert('删除功能正在开发中...');
+            if (confirm('确定要删除这个公司吗？此操作不可撤销！')) {
+                fetch(`/api/companies/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('公司不存在');
+                        }
+                        return response.json().then(err => {
+                            throw new Error(err.message || '删除失败');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.success) {
+                        alert(result.message);
+                        loadCompanies(); // 刷新列表
+                        loadStats(); // 刷新统计
+                    } else {
+                        alert('删除失败: ' + (result.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting company:', error);
+                    alert('删除失败: ' + error.message);
+                });
             }
         }
         
@@ -317,6 +602,21 @@
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 searchCompanies();
+            }
+        });
+        
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('companyModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        };
+        
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
             }
         });
     </script>

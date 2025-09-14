@@ -189,4 +189,20 @@
         LIMIT 1
     </select>
     
+    <!-- 获取所有报告期间（去重并倒序排列） -->
+    <select id="selectDistinctReportPeriods" resultType="String">
+        SELECT DISTINCT report_period 
+        FROM filings 
+        WHERE report_period IS NOT NULL AND report_period != ''
+        ORDER BY report_period DESC
+    </select>
+    
+    <!-- 根据CIK获取该公司的所有报告期间（去重并倒序排列） -->
+    <select id="selectDistinctReportPeriodsByCik" parameterType="String" resultType="String">
+        SELECT DISTINCT report_period 
+        FROM filings 
+        WHERE cik = #{cik} AND report_period IS NOT NULL AND report_period != ''
+        ORDER BY report_period DESC
+    </select>
+    
 </mapper>

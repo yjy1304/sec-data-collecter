@@ -303,6 +303,12 @@
             <div class="filters-section">
                 <div class="filters-row">
                     <div class="form-group">
+                        <label for="reportPeriodFilter">报告期间</label>
+                        <select id="reportPeriodFilter">
+                            <option value="">全部期间</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="minValue">最小市值 ($1000)</label>
                         <input type="number" id="minValue" placeholder="例如: 1000" />
                     </div>
@@ -409,6 +415,12 @@
             document.querySelectorAll('.company-card').forEach(card => card.classList.remove('selected'));
             event.currentTarget.classList.add('selected');
             
+            // 显示持仓区域
+            document.getElementById('holdingsSection').style.display = 'block';
+            
+            // 加载该公司的报告期间选项
+            loadReportPeriods(cik);
+            
             loadHoldings(cik);
         }
         
@@ -486,23 +498,35 @@
                 return;
             }
             
-            tbody.innerHTML = holdings.map(holding => `
-                <tr>
-                    <td>${holding.nameOfIssuer || 'N/A'}</td>
-                    <td>${holding.titleOfClass || 'N/A'}</td>
-                    <td>${holding.cusip || 'N/A'}</td>
-                    <td>$${formatNumber(holding.value || 0)}</td>
-                    <td>${formatNumber(holding.shares || 0)}</td>
-                    <td>${formatReportPeriod(holding.reportPeriod)}</td>
-                    <td>${holding.companyDisplayName || 'N/A'}</td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = holdings.map(holding => {
+                const reportPeriod = holding.filing?.reportPeriod || 'N/A';
+                
+                return `
+                    <tr>
+                        <td>${holding.nameOfIssuer || 'N/A'}</td>
+                        <td>${holding.titleOfClass || 'N/A'}</td>
+                        <td>${holding.cusip || 'N/A'}</td>
+                        <td>$${formatNumber(holding.value || 0)}</td>
+                        <td>${formatNumber(holding.shares || 0)}</td>
+                        <td>${reportPeriod}</td>
+                        <td>${holding.companyDisplayName || 'N/A'}</td>
+                    </tr>
+                `;
+            }).join('');
         }
         
         function applyFilters() {
             const minValue = parseFloat(document.getElementById('minValue').value) || 0;
             const stockSearch = document.getElementById('stockSearch').value.toLowerCase().trim();
+            const reportPeriod = document.getElementById('reportPeriodFilter').value;
             
+            // 如果选择了特定报告期间，重新加载数据
+            if (reportPeriod && selectedCompany) {
+                loadHoldings(selectedCompany.cik, null, null, reportPeriod, reportPeriod);
+                return;
+            }
+            
+            // 否则在客户端进行筛选
             filteredHoldings = currentHoldings.filter(holding => {
                 const valueFilter = !minValue || (holding.value && holding.value >= minValue);
                 const searchFilter = !stockSearch || 
@@ -520,9 +544,46 @@
         function clearFilters() {
             document.getElementById('minValue').value = '';
             document.getElementById('stockSearch').value = '';
-            filteredHoldings = [...currentHoldings];
-            renderHoldings(filteredHoldings);
-            updateSummary(currentHoldings);
+            document.getElementById('reportPeriodFilter').value = '';
+            
+            // 重新加载最新数据（不指定报告期间）
+            if (selectedCompany) {
+                loadHoldings(selectedCompany.cik);
+            } else {
+                filteredHoldings = [...currentHoldings];
+                renderHoldings(filteredHoldings);
+                updateSummary(currentHoldings);
+            }
+        }
+        
+        // 加载报告期间选项
+        function loadReportPeriods(cik = null) {
+            // 如果有CIK，使用公司特定的报告期间接口，否则使用全局接口
+            const url = cik ? `/api/holdings/report-periods/${cik}` : '/api/holdings/report-periods';
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch report periods');
+                    }
+                    return response.json();
+                })
+                .then(reportPeriods => {
+                    const select = document.getElementById('reportPeriodFilter');
+                    // 清除现有选项（保留"全部期间"选项）
+                    select.innerHTML = '<option value="">全部期间</option>';
+                    
+                    // 添加报告期间选项
+                    reportPeriods.forEach(period => {
+                        const option = document.createElement('option');
+                        option.value = period;
+                        option.textContent = period;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading report periods:', error);
+                });
         }
         
         function updateSummary(holdings) {

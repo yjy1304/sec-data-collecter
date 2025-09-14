@@ -80,6 +80,34 @@ public class HoldingsController {
     }
     
     /**
+     * 获取所有报告期间（去重并倒序排列）
+     */
+    @GetMapping(value = "/report-periods", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> getReportPeriods() {
+        try {
+            List<String> reportPeriods = holdingsService.getDistinctReportPeriods();
+            return ResponseEntity.ok(reportPeriods);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Collections.emptyList());
+        }
+    }
+    
+    /**
+     * 根据CIK获取该公司的所有报告期间（去重并倒序排列）
+     */
+    @GetMapping(value = "/report-periods/{cik}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> getReportPeriodsByCik(@PathVariable String cik) {
+        try {
+            List<String> reportPeriods = holdingsService.getDistinctReportPeriodsByCik(cik);
+            return ResponseEntity.ok(reportPeriods);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Collections.emptyList());
+        }
+    }
+    
+    /**
      * 导出持仓数据为CSV格式
      */
     @GetMapping(value = "/export/{cik}/csv", produces = "text/csv")
