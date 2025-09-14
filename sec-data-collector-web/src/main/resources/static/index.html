@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEC 13F数据收集器</title>
+    <title>SEC 13F数据管理系统</title>
     <style>
         * {
             margin: 0;
@@ -13,195 +13,469 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
             min-height: 100vh;
+            margin: 0;
             display: flex;
-            justify-content: center;
-            align-items: center;
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 260px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
         
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 50px;
-        }
-        
-        .header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-        
-        .menu-card {
-            background: white;
-            border-radius: 15px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .menu-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-        }
-        
-        .menu-card .icon {
-            font-size: 4rem;
-            text-align: center;
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
         
-        .menu-card h2 {
+        .sidebar-header h2 {
             color: #333;
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 1.8rem;
+            font-size: 1.4rem;
+            margin-bottom: 5px;
         }
         
-        .menu-card p {
+        .sidebar-header p {
             color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .nav-item {
+            margin-bottom: 5px;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .nav-link.active {
+            background-color: #007bff;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+        }
+        
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            min-height: 100vh;
+        }
+        
+        .container {
+            padding: 20px;
+        }
+        
+        /* 页面内容样式 */
+        .page-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .page-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background-color: #138496;
+        }
+        
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        
+        /* 成功提示框 */
+        .success-box {
+            margin: 20px 0;
+            padding: 30px;
+            border-radius: 8px;
             text-align: center;
-            font-size: 1.1rem;
+        }
+        
+        .success-green {
+            background-color: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .success-blue {
+            background-color: #cce5ff;
+            border: 2px solid #99ccff;
+            color: #004085;
+        }
+        
+        /* 首页样式 */
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+        
+        .feature-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .feature-card p {
+            color: #666;
+            margin-bottom: 20px;
             line-height: 1.6;
         }
         
-        .task-card {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-        
-        .task-card .icon {
-            color: white;
-        }
-        
-        .task-card h2, .task-card p {
-            color: white;
-        }
-        
-        .holdings-card {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
-        
-        .holdings-card .icon {
-            color: white;
-        }
-        
-        .holdings-card h2, .holdings-card p {
-            color: white;
-        }
-        
-        .companies-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .companies-card .icon {
-            color: white;
-        }
-        
-        .companies-card h2, .companies-card p {
-            color: white;
-        }
-        
+        /* 响应式设计 */
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
+            .sidebar {
+                transform: translateX(-100%);
             }
             
-            .menu-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
+            .sidebar.show {
+                transform: translateX(0);
             }
             
-            .menu-card {
-                padding: 30px 20px;
+            .main-content {
+                margin-left: 0;
             }
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 50px;
-            color: white;
-            opacity: 0.8;
+            
+            .main-content.expanded {
+                margin-left: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏢 SEC 13F数据收集器</h1>
-            <p>专业的机构投资者持仓数据收集与分析平台</p>
+    <!-- 侧边栏导航 -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>📊 SEC数据分析</h2>
+            <p>13F持仓数据管理系统</p>
         </div>
         
-        <div class="menu-grid">
-            <div class="menu-card task-card" onclick="goToTaskManagement()">
-                <div class="icon">📋</div>
-                <h2>任务管理</h2>
-                <p>发起数据抓取任务，查看任务进度和状态。管理批量数据收集，监控系统运行状态。</p>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a class="nav-link active" data-page="home">
+                    <span class="nav-icon">🏠</span>
+                    首页
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-page="holdings">
+                    <span class="nav-icon">📊</span>
+                    持仓管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-page="companies">
+                    <span class="nav-icon">🏢</span>
+                    公司管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-page="tasks">
+                    <span class="nav-icon">📋</span>
+                    任务管理
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="main-content" id="mainContent">
+        <div class="container">
+            <!-- 首页 -->
+            <div id="homePage" class="page-content active">
+                <div class="header">
+                    <h1>🏠 SEC 13F数据收集器</h1>
+                    <p>欢迎使用SEC 13F数据管理系统，选择左侧菜单开始使用各项功能</p>
+                </div>
+                
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <h3>📊 持仓管理</h3>
+                        <p>查看和分析机构投资者的13F持仓信息，支持数据筛选和导出功能</p>
+                        <button class="btn btn-primary" data-page="holdings">进入持仓管理</button>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🏢 公司管理</h3>
+                        <p>管理公司信息和数据抓取任务，维护公司基础数据</p>
+                        <button class="btn btn-primary" data-page="companies">进入公司管理</button>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📋 任务管理</h3>
+                        <p>监控和管理数据收集任务，查看任务执行状态和历史</p>
+                        <button class="btn btn-primary" data-page="tasks">进入任务管理</button>
+                    </div>
+                </div>
             </div>
             
-            <div class="menu-card holdings-card" onclick="goToHoldingsView()">
-                <div class="icon">📊</div>
-                <h2>持仓信息查看</h2>
-                <p>查看已收集的机构持仓数据，分析投资组合变化，生成投资报告和趋势分析。</p>
+            <!-- 持仓管理页面 - 整合实际功能 -->
+            <div id="holdingsPage" class="page-content">
+                <div class="header">
+                    <h1>📊 持仓信息查看</h1>
+                    <p>查看和分析机构投资者的13F持仓数据</p>
+                </div>
+                
+                <!-- 持仓管理功能内容 -->
+                <div style="background: white; border-radius: 10px; padding: 0px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                    <iframe src="/holdings-content.html" width="100%" height="800px" frameborder="0" style="border-radius: 8px;"></iframe>
+                </div>
             </div>
             
-            <div class="menu-card companies-card" onclick="goToCompanyManagement()">
-                <div class="icon">🏢</div>
-                <h2>公司维护管理</h2>
-                <p>维护机构公司信息，管理CIK和公司名称映射，设置行业分类和基本信息。</p>
+            <!-- 公司管理页面 - 整合实际功能 -->
+            <div id="companiesPage" class="page-content">
+                <div class="header">
+                    <h1>🏢 公司管理</h1>
+                    <p>管理公司基本信息、抓取状态和数据更新</p>
+                </div>
+                
+                <div class="success-box success-green">
+                    <h2 style="margin-bottom: 15px;">✅ 公司管理页面切换成功！</h2>
+                    <p style="font-size: 16px; margin-bottom: 10px;">
+                        公司管理功能已成功加载，当前时间: <span id="companiesLoadTime"></span>
+                    </p>
+                </div>
+                
+                <!-- 公司管理功能内容 -->
+                <div style="background: white; border-radius: 10px; padding: 0px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                    <iframe src="/companies-content.html" width="100%" height="800px" frameborder="0" style="border-radius: 8px;"></iframe>
+                </div>
             </div>
-        </div>
-        
-        <div class="footer">
-            <p>© 2025 SEC 13F数据收集器 - 基于公开的SEC EDGAR数据库</p>
+            
+            <!-- 任务管理页面 - 整合实际功能 -->
+            <div id="tasksPage" class="page-content">
+                <div class="header">
+                    <h1>📋 任务管理</h1>
+                    <p>监控和管理数据收集任务</p>
+                </div>
+                
+                <div class="success-box success-blue">
+                    <h2 style="margin-bottom: 15px;">✅ 任务管理页面切换成功！</h2>
+                    <p style="font-size: 16px; margin-bottom: 10px;">
+                        任务管理功能已成功加载，当前时间: <span id="tasksLoadTime"></span>
+                    </p>
+                </div>
+                
+                <!-- 这里将集成实际的任务管理功能 -->
+                <div style="background: white; border-radius: 10px; padding: 20px; box-shadow: 0 5 15px rgba(0,0,0,0.1);">
+                    <iframe src="/tasks.html" width="100%" height="800px" frameborder="0" style="border-radius: 8px;"></iframe>
+                </div>
+            </div>
         </div>
     </div>
-    
+
     <script>
-        function goToTaskManagement() {
-            window.location.href = '/tasks.html';
-        }
+        console.log('🚀 SEC 13F数据管理系统初始化...');
         
-        function goToHoldingsView() {
-            window.location.href = '/holdings.html';
-        }
-        
-        function goToCompanyManagement() {
-            window.location.href = '/companies.html';
-        }
-        
-        // 添加页面加载动画
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.menu-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(50px)';
+        // 简洁的页面切换功能
+        function showPage(pageId) {
+            console.log('🔄 切换到页面:', pageId);
+            
+            try {
+                // 隐藏所有页面
+                const pages = document.querySelectorAll('.page-content');
+                pages.forEach(page => {
+                    page.classList.remove('active');
+                });
                 
-                setTimeout(() => {
-                    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 200);
-            });
+                // 显示目标页面
+                const targetPage = document.getElementById(pageId + 'Page');
+                
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                    console.log('✅ 页面显示成功:', pageId);
+                    
+                    // 更新时间戳
+                    const now = new Date().toLocaleTimeString();
+                    if (pageId === 'companies') {
+                        const timeSpan = document.getElementById('companiesLoadTime');
+                        if (timeSpan) timeSpan.textContent = now;
+                    } else if (pageId === 'tasks') {
+                        const timeSpan = document.getElementById('tasksLoadTime');
+                        if (timeSpan) timeSpan.textContent = now;
+                    }
+                } else {
+                    console.error('❌ 页面不存在:', pageId + 'Page');
+                }
+                
+                // 更新导航状态
+                const allNavLinks = document.querySelectorAll('.nav-link');
+                allNavLinks.forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                const activeLink = document.querySelector(`[data-page="${pageId}"]`);
+                if (activeLink && activeLink.classList.contains('nav-link')) {
+                    activeLink.classList.add('active');
+                    console.log('🎯 激活菜单项:', pageId);
+                }
+                
+            } catch (error) {
+                console.error('💥 页面切换错误:', error);
+            }
+        }
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🏁 页面加载完成，开始事件绑定...');
+            
+            try {
+                // 查找所有带有data-page属性的元素
+                const navElements = document.querySelectorAll('[data-page]');
+                console.log('🔗 找到导航元素数量:', navElements.length);
+                
+                navElements.forEach((element, index) => {
+                    const pageId = element.getAttribute('data-page');
+                    console.log(`📌 元素${index + 1}: ${element.tagName} - data-page="${pageId}"`);
+                    
+                    element.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.log(`🖱️ 点击了: ${pageId}`);
+                        
+                        if (pageId) {
+                            showPage(pageId);
+                        }
+                    });
+                });
+                
+                console.log('✅ 事件绑定完成');
+                
+                // 显示首页
+                showPage('home');
+                
+            } catch (error) {
+                console.error('💥 初始化错误:', error);
+            }
         });
+        
+        // 全局测试函数
+        window.testNavigation = function() {
+            console.log('🧪 开始测试导航功能...');
+            showPage('holdings');
+            setTimeout(() => showPage('companies'), 2000);
+            setTimeout(() => showPage('tasks'), 4000);
+            setTimeout(() => showPage('home'), 6000);
+        };
+        
+        console.log('📋 提示: 可以在控制台运行 testNavigation() 来测试导航功能');
     </script>
 </body>
 </html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>持仓信息查看</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            padding: 10px;
+        }
+        
+        .container {
+            width: 100%;
+            margin: 0;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+        
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .company-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .company-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .company-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .company-card.selected {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+        }
+        
+        .company-card h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+        
+        .company-card p {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 4px 0;
+        }
+        
+        .holdings-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-size: 1.1rem;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .summary-card h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+        
+        .summary-card p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .filters-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .filters-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+        
+        .holdings-table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        .holdings-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .holdings-table th,
+        .holdings-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .holdings-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .holdings-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 持仓信息查看</h1>
+        </div>
+        
+        <div class="search-section">
+            <h2 class="section-title">查找公司</h2>
+            
+            <div class="search-form">
+                <div class="form-group">
+                    <label for="searchCik">CIK编号</label>
+                    <input type="text" id="searchCik" placeholder="例如: 0001067983" />
+                </div>
+                <div class="form-group">
+                    <label for="searchName">公司名称</label>
+                    <input type="text" id="searchName" placeholder="例如: Berkshire" />
+                </div>
+                <div class="form-group">
+                    <label for="sortBy">排序方式</label>
+                    <select id="sortBy">
+                        <option value="name">按名称</option>
+                        <option value="cik">按CIK</option>
+                        <option value="date">按日期</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-success" onclick="searchCompanies()">搜索</button>
+                </div>
+            </div>
+            
+            <div id="searchError" class="error" style="display: none;"></div>
+            
+            <div id="companyList" class="company-list">
+                <div class="loading">加载公司列表中...</div>
+            </div>
+        </div>
+        
+        <div id="holdingsSection" class="holdings-section" style="display: none;">
+            <h2 class="section-title" id="holdingsTitle">持仓信息</h2>
+            
+            <div id="holdingsSummary" class="summary-cards">
+                <!-- 统计信息卡片 -->
+            </div>
+            
+            <div class="filters-section">
+                <div class="filters-row">
+                    <div class="form-group">
+                        <label for="minValue">最小市值 ($1000)</label>
+                        <input type="number" id="minValue" placeholder="例如: 1000" />
+                    </div>
+                    <div class="form-group">
+                        <label for="stockSearch">股票搜索</label>
+                        <input type="text" id="stockSearch" placeholder="输入股票名称或CUSIP" />
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="applyFilters()">应用筛选</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-secondary" onclick="clearFilters()">清除筛选</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="export-buttons">
+                <button class="btn btn-info" onclick="exportToCSV()">导出CSV</button>
+                <button class="btn btn-info" onclick="exportToJSON()">导出JSON</button>
+            </div>
+            
+            <div class="holdings-table-container">
+                <table class="holdings-table">
+                    <thead>
+                        <tr>
+                            <th>发行人名称</th>
+                            <th>证券类别</th>
+                            <th>CUSIP</th>
+                            <th>市值 ($1000)</th>
+                            <th>股份数量</th>
+                            <th>报告期间</th>
+                            <th>公司名称</th>
+                        </tr>
+                    </thead>
+                    <tbody id="holdingsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading">选择公司查看持仓数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 这里包含所有原始的JavaScript功能
+        let currentCompanies = [];
+        let currentHoldings = [];
+        let filteredHoldings = [];
+        let selectedCompany = null;
+        
+        function searchCompanies() {
+            const cik = document.getElementById('searchCik').value.trim();
+            const name = document.getElementById('searchName').value.trim();
+            const sortBy = document.getElementById('sortBy').value;
+            
+            const url = new URL('/api/holdings/companies', window.location.origin);
+            if (cik) url.searchParams.append('cik', cik);
+            if (name) url.searchParams.append('name', name);
+            if (sortBy) url.searchParams.append('sortBy', sortBy);
+            
+            document.getElementById('companyList').innerHTML = '<div class="loading">搜索中...</div>';
+            hideError();
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    currentCompanies = data || [];
+                    renderCompanies(currentCompanies);
+                })
+                .catch(error => {
+                    console.error('Error fetching companies:', error);
+                    showError('获取公司数据失败: ' + error.message);
+                    document.getElementById('companyList').innerHTML = '<div class="loading">加载失败</div>';
+                });
+        }
+        
+        function renderCompanies(companies) {
+            const container = document.getElementById('companyList');
+            
+            if (!companies || companies.length === 0) {
+                container.innerHTML = '<div class="loading">未找到相关公司</div>';
+                return;
+            }
+            
+            container.innerHTML = companies.map(company => 
+                `<div class="company-card" onclick="selectCompany('${company.cik}', '${company.name}')">
+                    <h3>${company.name}</h3>
+                    <p><strong>CIK:</strong> ${company.cik}</p>
+                    <p><strong>最新申报:</strong> ${company.latestFilingDate || 'N/A'}</p>
+                    <p><strong>报告期间:</strong> ${company.latestReportPeriod || 'N/A'}</p>
+                </div>`
+            ).join('');
+        }
+        
+        function selectCompany(cik, name) {
+            selectedCompany = { cik, name };
+            
+            document.querySelectorAll('.company-card').forEach(card => card.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            
+            loadHoldings(cik);
+        }
+        
+        function loadHoldings(cik, filingDateFrom = null, filingDateTo = null, reportPeriodFrom = null, reportPeriodTo = null) {
+            document.querySelector('#holdingsSection .section-title').textContent = 
+                `${selectedCompany.name} 的持仓信息`;
+            
+            const url = new URL(`/api/holdings/company/${cik}`, window.location.origin);
+            if (filingDateFrom) url.searchParams.append('filingDateFrom', filingDateFrom);
+            if (filingDateTo) url.searchParams.append('filingDateTo', filingDateTo);
+            if (reportPeriodFrom) url.searchParams.append('reportPeriodFrom', reportPeriodFrom);
+            if (reportPeriodTo) url.searchParams.append('reportPeriodTo', reportPeriodTo);
+            
+            document.getElementById('holdingsTableBody').innerHTML = 
+                '<tr><td colspan="7" class="loading">加载持仓数据中...</td></tr>';
+            document.getElementById('holdingsSection').style.display = 'block';
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    currentHoldings = data?.holdings || [];
+                    filteredHoldings = [...currentHoldings];
+                    
+                    updateSummaryFromData(data?.summary, data?.latestReportPeriod);
+                    renderHoldings(filteredHoldings);
+                })
+                .catch(error => {
+                    console.error('Error fetching holdings:', error);
+                    document.getElementById('holdingsTableBody').innerHTML = 
+                        `<tr><td colspan="7" class="error">加载持仓数据失败: ${error.message}</td></tr>`;
+                });
+        }
+        
+        function updateSummaryFromData(summary, latestReportPeriod) {
+            if (!summary) {
+                document.getElementById('totalHoldings').textContent = '0';
+                document.getElementById('totalValue').textContent = '$0';
+                document.getElementById('avgPosition').textContent = '$0';
+                document.getElementById('reportPeriod').textContent = 'N/A';
+                return;
+            }
+            
+            const summaryHtml = `
+                <div class="summary-card">
+                    <h3>${summary.totalHoldings || 0}</h3>
+                    <p>总持仓数</p>
+                </div>
+                <div class="summary-card">
+                    <h3>$${formatNumber(summary.totalValue || 0)}</h3>
+                    <p>总市值 (千美元)</p>
+                </div>
+                <div class="summary-card">
+                    <h3>$${formatNumber(summary.avgPosition || 0)}</h3>
+                    <p>平均持仓</p>
+                </div>
+                <div class="summary-card">
+                    <h3>${latestReportPeriod || 'N/A'}</h3>
+                    <p>报告期间</p>
+                </div>
+            `;
+            
+            document.getElementById('holdingsSummary').innerHTML = summaryHtml;
+        }
+        
+        function renderHoldings(holdings) {
+            const tbody = document.getElementById('holdingsTableBody');
+            
+            if (!holdings || holdings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">暂无持仓数据</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = holdings.map(holding => `
+                <tr>
+                    <td>${holding.nameOfIssuer || 'N/A'}</td>
+                    <td>${holding.titleOfClass || 'N/A'}</td>
+                    <td>${holding.cusip || 'N/A'}</td>
+                    <td>$${formatNumber(holding.value || 0)}</td>
+                    <td>${formatNumber(holding.shares || 0)}</td>
+                    <td>${formatReportPeriod(holding.reportPeriod)}</td>
+                    <td>${holding.companyDisplayName || 'N/A'}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function applyFilters() {
+            const minValue = parseFloat(document.getElementById('minValue').value) || 0;
+            const stockSearch = document.getElementById('stockSearch').value.toLowerCase().trim();
+            
+            filteredHoldings = currentHoldings.filter(holding => {
+                const valueFilter = !minValue || (holding.value && holding.value >= minValue);
+                const searchFilter = !stockSearch || 
+                    (holding.nameOfIssuer && holding.nameOfIssuer.toLowerCase().includes(stockSearch)) ||
+                    (holding.cusip && holding.cusip.toLowerCase().includes(stockSearch)) ||
+                    (holding.titleOfClass && holding.titleOfClass.toLowerCase().includes(stockSearch));
+                
+                return valueFilter && searchFilter;
+            });
+            
+            renderHoldings(filteredHoldings);
+            updateSummary(filteredHoldings);
+        }
+        
+        function clearFilters() {
+            document.getElementById('minValue').value = '';
+            document.getElementById('stockSearch').value = '';
+            filteredHoldings = [...currentHoldings];
+            renderHoldings(filteredHoldings);
+            updateSummary(currentHoldings);
+        }
+        
+        function updateSummary(holdings) {
+            if (!holdings || holdings.length === 0) {
+                return;
+            }
+            
+            const totalValue = holdings.reduce((sum, h) => sum + (h.value || 0), 0);
+            const avgPosition = holdings.length > 0 ? totalValue / holdings.length : 0;
+            
+            const summaryCards = document.querySelectorAll('.summary-card h3');
+            if (summaryCards.length >= 3) {
+                summaryCards[0].textContent = holdings.length;
+                summaryCards[1].textContent = `$${formatNumber(totalValue)}`;
+                summaryCards[2].textContent = `$${formatNumber(avgPosition)}`;
+            }
+        }
+        
+        function exportToCSV() {
+            if (!selectedCompany) {
+                alert('请先选择一个公司');
+                return;
+            }
+            
+            const url = `/api/holdings/export/csv/${selectedCompany.cik}`;
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${selectedCompany.name}_holdings.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function exportToJSON() {
+            if (!filteredHoldings || filteredHoldings.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(filteredHoldings, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${selectedCompany?.name || 'holdings'}_data.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+        }
+        
+        function formatNumber(num) {
+            return new Intl.NumberFormat('en-US').format(num);
+        }
+        
+        function formatReportPeriod(reportPeriod) {
+            if (!reportPeriod) {
+                return 'N/A';
+            }
+            
+            if (typeof reportPeriod === 'string') {
+                return reportPeriod;
+            }
+            
+            if (Array.isArray(reportPeriod) && reportPeriod.length >= 3) {
+                return `${reportPeriod[0]}-${String(reportPeriod[1]).padStart(2, '0')}-${String(reportPeriod[2]).padStart(2, '0')}`;
+            }
+            
+            return 'N/A';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('searchError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('searchError').style.display = 'none';
+        }
+        
+        // 页面加载时自动搜索
+        document.addEventListener('DOMContentLoaded', function() {
+            searchCompanies();
+        });
+    </script>
+</body>
+</html>
