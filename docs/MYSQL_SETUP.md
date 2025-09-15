@@ -28,6 +28,24 @@ CREATE TABLE filings (
     INDEX idx_cik (cik),
     INDEX idx_filing_date (filing_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `merge_holdings` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `holding_id` bigint NOT NULL,
+  `filing_id` bigint NOT NULL,
+  `cik` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_name` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name_of_issuer` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cusip` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` decimal(15,2) DEFAULT NULL,
+  `shares` bigint DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_filing_id` (`filing_id`),
+  KEY `idx_cusip` (`cusip`),
+  KEY `idx_name_of_issuer` (`name_of_issuer`(100)),
+  CONSTRAINT `merge_holdings_ibfk_1` FOREIGN KEY (`holding_id`) REFERENCES `holdings` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ## 🚀 如何启用MySQL
