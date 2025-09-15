@@ -367,16 +367,9 @@
                     <p>监控和管理数据收集任务</p>
                 </div>
                 
-                <div class="success-box success-blue">
-                    <h2 style="margin-bottom: 15px;">✅ 任务管理页面切换成功！</h2>
-                    <p style="font-size: 16px; margin-bottom: 10px;">
-                        任务管理功能已成功加载，当前时间: <span id="tasksLoadTime"></span>
-                    </p>
-                </div>
-                
-                <!-- 这里将集成实际的任务管理功能 -->
+                <!-- 任务管理功能内容 -->
                 <div style="background: white; border-radius: 10px; padding: 20px; box-shadow: 0 5 15px rgba(0,0,0,0.1);">
-                    <iframe src="/tasks-content.html?v=1.1" width="100%" height="800px" frameborder="0" style="border-radius: 8px;"></iframe>
+                    <iframe src="/tasks-content.html?v=1.2" width="100%" height="800px" frameborder="0" style="border-radius: 8px;"></iframe>
                 </div>
             </div>
         </div>
@@ -407,9 +400,6 @@
                     const now = new Date().toLocaleTimeString();
                     if (pageId === 'companies') {
                         const timeSpan = document.getElementById('companiesLoadTime');
-                        if (timeSpan) timeSpan.textContent = now;
-                    } else if (pageId === 'tasks') {
-                        const timeSpan = document.getElementById('tasksLoadTime');
                         if (timeSpan) timeSpan.textContent = now;
                     }
                 } else {

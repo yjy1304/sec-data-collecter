@@ -68,10 +68,6 @@
             background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
             color: white;
         }
-        .stat-card.running { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
         .stat-card.pending { 
             background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
             color: #333;
@@ -261,17 +257,13 @@
                 <h3 id="failedTasks">-</h3>
                 <p>失败</p>
             </div>
-            <div class="stat-card running">
-                <h3 id="runningTasks">-</h3>
-                <p>运行中</p>
-            </div>
             <div class="stat-card pending">
                 <h3 id="pendingTasks">-</h3>
-                <p>等待中</p>
+                <p>待处理</p>
             </div>
             <div class="stat-card retry">
                 <h3 id="retryTasks">-</h3>
-                <p>重试中</p>
+                <p>等待重试</p>
             </div>
         </div>
         
@@ -299,9 +291,8 @@
                         <option value="">全部状态</option>
                         <option value="COMPLETED">已完成</option>
                         <option value="FAILED">失败</option>
-                        <option value="RUNNING">运行中</option>
-                        <option value="PENDING">等待中</option>
-                        <option value="RETRY">重试</option>
+                        <option value="PENDING">待处理</option>
+                        <option value="RETRY">等待重试</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -388,7 +379,6 @@
                     document.getElementById('totalTasks').textContent = stats.totalTasks || 0;
                     document.getElementById('completedTasks').textContent = stats.completedTasks || 0;
                     document.getElementById('failedTasks').textContent = stats.failedTasks || 0;
-                    document.getElementById('runningTasks').textContent = stats.runningTasks || 0;
                     document.getElementById('pendingTasks').textContent = stats.pendingTasks || 0;
                     document.getElementById('retryTasks').textContent = stats.retryTasks || 0;
                 })
@@ -527,9 +517,8 @@
             const labels = {
                 'COMPLETED': '已完成',
                 'FAILED': '失败',
-                'RUNNING': '运行中',
-                'PENDING': '等待中',
-                'RETRY': '重试'
+                'PENDING': '待处理',
+                'RETRY': '等待重试'
             };
             return labels[status] || status;
         }

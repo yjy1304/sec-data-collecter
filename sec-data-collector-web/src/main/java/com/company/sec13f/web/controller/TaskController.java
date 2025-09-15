@@ -31,19 +31,17 @@ public class TaskController {
             // 获取总任务数
             long totalTasks = taskMapper.countAll();
             
-            // 获取各状态的任务数量
+            // 获取各状态的任务数量（基于TaskStatus枚举）
             long pendingTasks = taskMapper.countByStatus("PENDING");
-            long runningTasks = taskMapper.countByStatus("RUNNING");
+            long retryTasks = taskMapper.countByStatus("RETRY");
             long completedTasks = taskMapper.countByStatus("COMPLETED");
             long failedTasks = taskMapper.countByStatus("FAILED");
-            long retryTasks = taskMapper.countByStatus("RETRY");
             
             stats.put("totalTasks", totalTasks);
             stats.put("pendingTasks", pendingTasks);
-            stats.put("runningTasks", runningTasks);
+            stats.put("retryTasks", retryTasks);
             stats.put("completedTasks", completedTasks);
             stats.put("failedTasks", failedTasks);
-            stats.put("retryTasks", retryTasks);
             
             return ResponseEntity.ok(stats);
             
