@@ -58,6 +58,21 @@ public class TaskParameters {
         return null;
     }
     
+    public Long getLong(String key) {
+        Object value = parameters.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Long.parseLong((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+    
     public Boolean getBoolean(String key) {
         Object value = parameters.get(key);
         if (value instanceof Boolean) {
@@ -93,6 +108,14 @@ public class TaskParameters {
     // 静态工厂方法用于创建数据抓取任务参数
     public static TaskParameters forScraping(String cik, String companyName) {
         return new TaskParameters()
+            .put("cik", cik)
+            .put("companyName", companyName);
+    }
+    
+    // 静态工厂方法用于创建持仓合并任务参数
+    public static TaskParameters forHoldingMerge(Long filingId, String cik, String companyName) {
+        return new TaskParameters()
+            .put("filingId", filingId)
             .put("cik", cik)
             .put("companyName", companyName);
     }

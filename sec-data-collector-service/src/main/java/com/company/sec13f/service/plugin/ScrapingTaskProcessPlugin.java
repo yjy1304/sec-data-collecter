@@ -7,10 +7,12 @@ import com.company.sec13f.repository.mapper.HoldingMapper;
 import com.company.sec13f.service.scraper.RealSECScraper;
 import com.company.sec13f.service.util.DataValidator;
 import com.company.sec13f.service.util.Logger;
+import com.company.sec13f.repository.mapper.TaskMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 数据抓取任务处理插件
@@ -22,13 +24,15 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
     private final RealSECScraper scraper;
     private final FilingMapper filingMapper;
     private final HoldingMapper holdingMapper;
+    private final TaskMapper taskMapper;
     private final Logger logger;
     
     @Autowired
-    public ScrapingTaskProcessPlugin(FilingMapper filingMapper, HoldingMapper holdingMapper) {
+    public ScrapingTaskProcessPlugin(FilingMapper filingMapper, HoldingMapper holdingMapper, TaskMapper taskMapper) {
         this.scraper = new RealSECScraper();
         this.filingMapper = filingMapper;
         this.holdingMapper = holdingMapper;
+        this.taskMapper = taskMapper;
         this.logger = Logger.getInstance();
     }
     
@@ -51,6 +55,8 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
             logger.info("Found " + filings.size() + " 13F filings for " + companyName);
             
             int savedCount = 0;
+            List<Long> newFilingIds = new ArrayList<>(); // 收集新保存的filing ID
+            
             for (com.company.sec13f.repository.model.Filing filing : filings) {
                 // 检查是否已经存在
                 if (!isFilingExists(filing.getAccessionNumber())) {
@@ -72,6 +78,8 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
                                     entityHolding.setFilingId(entityFiling.getId());
                                     holdingMapper.insert(entityHolding);
                                 }
+                                // 记录有持仓数据的filing ID，用于后续创建合并任务
+                                newFilingIds.add(entityFiling.getId());
                             }
                             savedCount++;
                         }
@@ -87,6 +95,34 @@ public class ScrapingTaskProcessPlugin implements TaskProcessPlugin {
             
             String resultMessage = "成功爬取并保存了 " + savedCount + " 个新的13F文件";
             logger.info(resultMessage);
+            
+            // 为每个新的有持仓数据的filing创建HOLDING_MERGE任务
+            if (!newFilingIds.isEmpty()) {
+                int mergeTasksCreated = 0;
+                for (Long filingId : newFilingIds) {
+                    try {
+                        TaskParameters mergeParams = TaskParameters.forHoldingMerge(filingId, cik, companyName);
+                        
+                        // 直接创建任务对象并插入数据库，避免循环依赖
+                        com.company.sec13f.repository.entity.Task mergeTask = new com.company.sec13f.repository.entity.Task(
+                            java.util.UUID.randomUUID().toString(), 
+                            TaskType.HOLDING_MERGE
+                        );
+                        mergeTask.setTaskParameters(mergeParams.toJson());
+                        
+                        taskMapper.insert(mergeTask);
+                        logger.info(String.format("📊 创建持仓合并任务: %s for FilingId: %d", mergeTask.getTaskId(), filingId));
+                        mergeTasksCreated++;
+                    } catch (Exception e) {
+                        logger.warn(String.format("⚠️ 创建持仓合并任务失败 for FilingId: %d, 错误: %s", filingId, e.getMessage()));
+                    }
+                }
+                
+                if (mergeTasksCreated > 0) {
+                    resultMessage += String.format("，并创建了 %d 个持仓合并任务", mergeTasksCreated);
+                }
+            }
+            
             return TaskResult.success(resultMessage);
             
         } catch (java.io.IOException e) {

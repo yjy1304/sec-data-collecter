@@ -9,5 +9,6 @@ public enum TaskType {
     DATA_EXPORT,            // 数据导出
     SYSTEM_MAINTENANCE,     // 系统维护
     SCRAP_HOLDING,          // 抓取持仓（兼容性）
-    SCRAP_FINANCIAL_REPORT  // 抓取财报（兼容性）
+    SCRAP_FINANCIAL_REPORT, // 抓取财报（兼容性）
+    HOLDING_MERGE           // 持仓数据合并
 }

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.sec13f.repository.mapper.MergeHoldingMapper">
+    
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="MergeHolding">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="holding_id" property="holdingId" jdbcType="BIGINT"/>
+        <result column="filing_id" property="filingId" jdbcType="BIGINT"/>
+        <result column="cik" property="cik" jdbcType="VARCHAR"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="name_of_issuer" property="nameOfIssuer" jdbcType="VARCHAR"/>
+        <result column="cusip" property="cusip" jdbcType="VARCHAR"/>
+        <result column="value" property="value" jdbcType="DECIMAL"/>
+        <result column="shares" property="shares" jdbcType="BIGINT"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    
+    <!-- 基础SQL片段 -->
+    <sql id="Base_Column_List">
+        id, holding_id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares, created_at, updated_at
+    </sql>
+    
+    <!-- 插入合并持仓记录 -->
+    <insert id="insert" parameterType="MergeHolding" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO merge_holdings (
+            holding_id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares
+        ) VALUES (
+            #{holdingId}, #{filingId}, #{cik}, #{companyName}, #{nameOfIssuer}, #{cusip}, #{value}, #{shares}
+        )
+    </insert>
+    
+    <!-- 批量插入合并持仓记录 -->
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO merge_holdings (
+            holding_id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares
+        ) VALUES 
+        <foreach collection="mergeHoldings" item="item" separator=",">
+            (#{item.holdingId}, #{item.filingId}, #{item.cik}, #{item.companyName}, #{item.nameOfIssuer}, #{item.cusip}, #{item.value}, #{item.shares})
+        </foreach>
+    </insert>
+    
+    <!-- 根据filing_id删除合并持仓记录 -->
+    <delete id="deleteByFilingId" parameterType="Long">
+        DELETE FROM merge_holdings WHERE filing_id = #{filingId}
+    </delete>
+    
+    <!-- 根据filing_id和cusip查询聚合后的持仓数据 -->
+    <select id="selectAggregatedHoldingsByFilingId" parameterType="Long" resultType="map">
+        select  f.cik as cik,
+        f.company_name as company_name,
+        aggr.filing_id as filing_id,
+        aggr.cusip as cusip,
+        aggr.name_of_issuer as name_of_issuer,
+        aggr.total_shares as total_shares,
+        aggr.total_value as total_value,
+        aggr.first_holding_id as first_holding_id
+        from (SELECT
+        h.filing_id,
+        h.cusip,
+        max(h.name_of_issuer) as name_of_issuer,
+        SUM(h.value) as total_value,
+        SUM(h.shares) as total_shares,
+        COUNT(*) as holding_count,
+        MIN(h.id) as first_holding_id
+        FROM holdings h
+        GROUP BY h.filing_id, h.cusip) aggr
+        INNER JOIN filings f ON aggr.filing_id = f.id
+        WHERE aggr.filing_id  = #{filingId}
+    </select>
+    
+    <!-- 根据filing_id查询合并后的持仓记录 -->
+    <select id="selectByFilingId" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM merge_holdings
+        WHERE filing_id = #{filingId}
+        ORDER BY value DESC
+    </select>
+    
+    <!-- 根据ID查询合并持仓记录 -->
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM merge_holdings
+        WHERE id = #{id}
+    </select>
+    
+    <!-- 统计指定filing_id的合并持仓记录数量 -->
+    <select id="countByFilingId" parameterType="Long" resultType="long">
+        SELECT COUNT(*) FROM merge_holdings WHERE filing_id = #{filingId}
+    </select>
+    
+    <!-- 统计总记录数 -->
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM merge_holdings
+    </select>
+    
+    <!-- 根据CUSIP和filing_id查询是否已存在合并记录 -->
+    <select id="existsByFilingIdAndCusip" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM merge_holdings
+        WHERE filing_id = #{filingId} AND cusip = #{cusip}
+    </select>
+    
+</mapper>
