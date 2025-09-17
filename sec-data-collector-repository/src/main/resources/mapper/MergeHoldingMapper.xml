@@ -11,6 +11,7 @@
         <result column="filing_id" property="filingId" jdbcType="BIGINT"/>
         <result column="cik" property="cik" jdbcType="VARCHAR"/>
         <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="report_period" property="reportPeriod" jdbcType="VARCHAR"/>
         <result column="name_of_issuer" property="nameOfIssuer" jdbcType="VARCHAR"/>
         <result column="cusip" property="cusip" jdbcType="VARCHAR"/>
         <result column="value" property="value" jdbcType="DECIMAL"/>
@@ -21,25 +22,25 @@
     
     <!-- 基础SQL片段 -->
     <sql id="Base_Column_List">
-        id, holding_id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares, created_at, updated_at
+        id, holding_id, filing_id, cik, company_name, report_period, name_of_issuer, cusip, value, shares, created_at, updated_at
     </sql>
     
     <!-- 插入合并持仓记录 -->
     <insert id="insert" parameterType="MergeHolding" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO merge_holdings (
-            holding_id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares
+            holding_id, filing_id, cik, company_name, report_period, name_of_issuer, cusip, value, shares
         ) VALUES (
-            #{holdingId}, #{filingId}, #{cik}, #{companyName}, #{nameOfIssuer}, #{cusip}, #{value}, #{shares}
+            #{holdingId}, #{filingId}, #{cik}, #{companyName}, #{reportPeriod}, #{nameOfIssuer}, #{cusip}, #{value}, #{shares}
         )
     </insert>
     
     <!-- 批量插入合并持仓记录 -->
     <insert id="batchInsert" parameterType="list">
         INSERT INTO merge_holdings (
-            holding_id, filing_id, cik, company_name, name_of_issuer, cusip, value, shares
+            holding_id, filing_id, cik, company_name, report_period, name_of_issuer, cusip, value, shares
         ) VALUES 
         <foreach collection="mergeHoldings" item="item" separator=",">
-            (#{item.holdingId}, #{item.filingId}, #{item.cik}, #{item.companyName}, #{item.nameOfIssuer}, #{item.cusip}, #{item.value}, #{item.shares})
+            (#{item.holdingId}, #{item.filingId}, #{item.cik}, #{item.companyName}, #{item.reportPeriod}, #{item.nameOfIssuer}, #{item.cusip}, #{item.value}, #{item.shares})
         </foreach>
     </insert>
     
@@ -52,6 +53,7 @@
     <select id="selectAggregatedHoldingsByFilingId" parameterType="Long" resultType="map">
         select  f.cik as cik,
         f.company_name as company_name,
+        f.report_period as report_period,
         aggr.filing_id as filing_id,
         aggr.cusip as cusip,
         aggr.name_of_issuer as name_of_issuer,
@@ -74,17 +76,19 @@
     
     <!-- 根据filing_id查询合并后的持仓记录 -->
     <select id="selectByFilingId" parameterType="Long" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM merge_holdings
-        WHERE filing_id = #{filingId}
-        ORDER BY value DESC
+        SELECT m.id, m.holding_id, m.filing_id, m.cik, m.company_name, f.report_period, m.name_of_issuer, m.cusip, m.value, m.shares, m.created_at, m.updated_at
+        FROM merge_holdings m
+        JOIN filings f ON m.filing_id = f.id
+        WHERE m.filing_id = #{filingId}
+        ORDER BY m.value DESC
     </select>
     
     <!-- 根据ID查询合并持仓记录 -->
     <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM merge_holdings
-        WHERE id = #{id}
+        SELECT m.id, m.holding_id, m.filing_id, m.cik, m.company_name, f.report_period, m.name_of_issuer, m.cusip, m.value, m.shares, m.created_at, m.updated_at
+        FROM merge_holdings m
+        JOIN filings f ON m.filing_id = f.id
+        WHERE m.id = #{id}
     </select>
     
     <!-- 统计指定filing_id的合并持仓记录数量 -->
@@ -102,6 +106,55 @@
         SELECT COUNT(1) > 0
         FROM merge_holdings
         WHERE filing_id = #{filingId} AND cusip = #{cusip}
+    </select>
+    
+    <!-- 根据查询参数筛选合并持仓记录（使用动态SQL） -->
+    <select id="selectByQueryParam" resultMap="BaseResultMap">
+        SELECT m.id, m.holding_id, m.filing_id, m.cik, m.company_name, f.report_period, m.name_of_issuer, m.cusip, m.value, m.shares, m.created_at, m.updated_at
+        FROM merge_holdings m
+        JOIN filings f ON m.filing_id = f.id
+        WHERE 1=1
+        <if test="param.cik != null and param.cik != ''">
+            AND m.cik = #{param.cik}
+        </if>
+        <if test="param.reportPeriodFrom != null and param.reportPeriodFrom != ''">
+            AND f.report_period &gt;= #{param.reportPeriodFrom}
+        </if>
+        <if test="param.reportPeriodTo != null and param.reportPeriodTo != ''">
+            AND f.report_period &lt;= #{param.reportPeriodTo}
+        </if>
+        <if test="param.minValue != null">
+            AND m.value &gt;= #{param.minValue}
+        </if>
+        <if test="param.search != null and param.search != ''">
+            AND (m.name_of_issuer LIKE CONCAT('%', #{param.search}, '%') OR m.cusip LIKE CONCAT('%', #{param.search}, '%'))
+        </if>
+        <choose>
+            <when test="param.sortBy == 'value'">
+                ORDER BY m.value 
+                <choose>
+                    <when test="param.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="param.sortBy == 'name'">
+                ORDER BY m.name_of_issuer 
+                <choose>
+                    <when test="param.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <when test="param.sortBy == 'shares'">
+                ORDER BY m.shares 
+                <choose>
+                    <when test="param.sortOrder == 'asc'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <otherwise>
+                ORDER BY m.value DESC
+            </otherwise>
+        </choose>
     </select>
     
 </mapper>

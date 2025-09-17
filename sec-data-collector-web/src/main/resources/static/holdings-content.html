@@ -335,7 +335,6 @@
                     <thead>
                         <tr>
                             <th>发行人名称</th>
-                            <th>证券类别</th>
                             <th>CUSIP</th>
                             <th>市值 ($1000)</th>
                             <th>股份数量</th>
@@ -345,7 +344,7 @@
                     </thead>
                     <tbody id="holdingsTableBody">
                         <tr>
-                            <td colspan="7" class="loading">选择公司查看持仓数据</td>
+                            <td colspan="6" class="loading">选择公司查看持仓数据</td>
                         </tr>
                     </tbody>
                 </table>
@@ -435,7 +434,7 @@
             if (reportPeriodTo) url.searchParams.append('reportPeriodTo', reportPeriodTo);
             
             document.getElementById('holdingsTableBody').innerHTML = 
-                '<tr><td colspan="7" class="loading">加载持仓数据中...</td></tr>';
+                '<tr><td colspan="6" class="loading">加载持仓数据中...</td></tr>';
             document.getElementById('holdingsSection').style.display = 'block';
             
             fetch(url)
@@ -446,8 +445,14 @@
                     return response.json();
                 })
                 .then(data => {
+                    console.log('API response received:', data);
                     currentHoldings = data?.holdings || [];
                     filteredHoldings = [...currentHoldings];
+                    console.log('Holdings extracted:', currentHoldings.length, 'items');
+                    
+                    if (currentHoldings.length > 0) {
+                        console.log('First holding sample:', currentHoldings[0]);
+                    }
                     
                     updateSummaryFromData(data?.summary, data?.latestReportPeriod);
                     renderHoldings(filteredHoldings);
@@ -455,7 +460,7 @@
                 .catch(error => {
                     console.error('Error fetching holdings:', error);
                     document.getElementById('holdingsTableBody').innerHTML = 
-                        `<tr><td colspan="7" class="error">加载持仓数据失败: ${error.message}</td></tr>`;
+                        `<tr><td colspan="6" class="error">加载持仓数据失败: ${error.message}</td></tr>`;
                 });
         }
         
@@ -491,60 +496,88 @@
         }
         
         function renderHoldings(holdings) {
+            console.log('renderHoldings called with:', holdings?.length, 'holdings');
             const tbody = document.getElementById('holdingsTableBody');
             
-            if (!holdings || holdings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="loading">暂无持仓数据</td></tr>';
+            if (!tbody) {
+                console.error('tbody element not found!');
                 return;
             }
             
+            if (!holdings || holdings.length === 0) {
+                console.log('No holdings data to render');
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">暂无持仓数据</td></tr>';
+                return;
+            }
+            
+            console.log('Rendering', holdings.length, 'holdings...');
+            
             tbody.innerHTML = holdings.map(holding => {
-                const reportPeriod = holding.filing?.reportPeriod || 'N/A';
+                const reportPeriod = holding.reportPeriod || 'N/A';
+                console.log('Debug holding:', {
+                    nameOfIssuer: holding.nameOfIssuer,
+                    reportPeriod: holding.reportPeriod,
+                    companyName: holding.companyName,
+                    cusip: holding.cusip,
+                    value: holding.value
+                });
                 
                 return `
                     <tr>
                         <td>${holding.nameOfIssuer || 'N/A'}</td>
-                        <td>${holding.titleOfClass || 'N/A'}</td>
                         <td>${holding.cusip || 'N/A'}</td>
                         <td>$${formatNumber(holding.value || 0)}</td>
                         <td>${formatNumber(holding.shares || 0)}</td>
                         <td>${reportPeriod}</td>
-                        <td>${holding.companyDisplayName || 'N/A'}</td>
+                        <td>${holding.companyName || 'N/A'}</td>
                     </tr>
                 `;
             }).join('');
         }
         
         function applyFilters() {
+            console.log('🔍 applyFilters() called');
             const minValue = parseFloat(document.getElementById('minValue').value) || 0;
             const stockSearch = document.getElementById('stockSearch').value.toLowerCase().trim();
             const reportPeriod = document.getElementById('reportPeriodFilter').value;
+            console.log('Filter values:', { minValue, stockSearch, reportPeriod });
+            
+            // 检查是否有数据可筛选
+            if (!currentHoldings || currentHoldings.length === 0) {
+                console.log('⚠️ No holdings data to filter');
+                return;
+            }
             
             // 如果选择了特定报告期间，重新加载数据
             if (reportPeriod && selectedCompany) {
+                console.log('🔄 Reloading data for report period:', reportPeriod);
                 loadHoldings(selectedCompany.cik, null, null, reportPeriod, reportPeriod);
                 return;
             }
             
             // 否则在客户端进行筛选
+            console.log('Applying filters:', { minValue, stockSearch, reportPeriod });
+            console.log('Current holdings count:', currentHoldings.length);
             filteredHoldings = currentHoldings.filter(holding => {
                 const valueFilter = !minValue || (holding.value && holding.value >= minValue);
                 const searchFilter = !stockSearch || 
                     (holding.nameOfIssuer && holding.nameOfIssuer.toLowerCase().includes(stockSearch)) ||
-                    (holding.cusip && holding.cusip.toLowerCase().includes(stockSearch)) ||
-                    (holding.titleOfClass && holding.titleOfClass.toLowerCase().includes(stockSearch));
+                    (holding.cusip && holding.cusip.toLowerCase().includes(stockSearch));
                 
                 return valueFilter && searchFilter;
             });
             
+            console.log('📊 Filter results:', filteredHoldings.length, 'holdings out of', currentHoldings.length);
             renderHoldings(filteredHoldings);
             updateSummary(filteredHoldings);
         }
         
         function clearFilters() {
+            console.log('🧹 clearFilters() called');
             document.getElementById('minValue').value = '';
             document.getElementById('stockSearch').value = '';
             document.getElementById('reportPeriodFilter').value = '';
+            console.log('Filters cleared');
             
             // 重新加载最新数据（不指定报告期间）
             if (selectedCompany) {
@@ -669,6 +702,44 @@
         
         // 页面加载时自动搜索
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Page loaded, setting up event listeners');
+            
+            // 添加额外的事件监听器作为备用
+            const applyBtn = document.querySelector('button[onclick="applyFilters()"]');
+            const clearBtn = document.querySelector('button[onclick="clearFilters()"]');
+            
+            if (applyBtn) {
+                applyBtn.addEventListener('click', function(e) {
+                    console.log('📌 Apply button clicked via addEventListener');
+                    e.preventDefault();
+                    applyFilters();
+                });
+                console.log('✅ Apply button event listener added');
+            }
+            
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function(e) {
+                    console.log('📌 Clear button clicked via addEventListener');
+                    e.preventDefault();
+                    clearFilters();
+                });
+                console.log('✅ Clear button event listener added');
+            }
+            
+            // 添加回车键支持
+            const inputs = ['minValue', 'stockSearch'];
+            inputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            console.log('🔄 Enter key pressed in', inputId);
+                            applyFilters();
+                        }
+                    });
+                }
+            });
+            
             searchCompanies();
         });
     </script>

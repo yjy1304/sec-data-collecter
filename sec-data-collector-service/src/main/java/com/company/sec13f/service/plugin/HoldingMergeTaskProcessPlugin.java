@@ -69,6 +69,7 @@ public class HoldingMergeTaskProcessPlugin implements TaskProcessPlugin {
                 mergeHolding.setFilingId(getLongValue(data, "filing_id"));
                 mergeHolding.setCik(getStringValue(data, "cik"));
                 mergeHolding.setCompanyName(getStringValue(data, "company_name"));
+                mergeHolding.setReportPeriod(getStringValue(data, "report_period"));
                 mergeHolding.setNameOfIssuer(getStringValue(data, "name_of_issuer"));
                 mergeHolding.setCusip(getStringValue(data, "cusip"));
                 mergeHolding.setValue(getBigDecimalValue(data, "total_value"));

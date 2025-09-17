@@ -24,6 +24,9 @@ public class Filing {
     // 关联的Holdings（延迟加载）
     private List<Holding> holdings;
     
+    // 持仓数量（用于统计查询）
+    private Integer holdingsCount;
+    
     // 构造方法
     public Filing() {
     }
@@ -125,6 +128,14 @@ public class Filing {
     
     public void setHoldings(List<Holding> holdings) {
         this.holdings = holdings;
+    }
+    
+    public Integer getHoldingsCount() {
+        return holdingsCount;
+    }
+    
+    public void setHoldingsCount(Integer holdingsCount) {
+        this.holdingsCount = holdingsCount;
     }
     
     @Override

@@ -15,7 +15,7 @@ public class HomeController {
      */
     @GetMapping("/")
     public String home() {
-        return "index.html";
+        return "redirect:/index.html";
     }
     
     /**
@@ -23,7 +23,7 @@ public class HomeController {
      */
     @GetMapping("/analysis")
     public String analysis() {
-        return "analysis.html";
+        return "redirect:/analysis.html";
     }
     
     /**
@@ -31,7 +31,7 @@ public class HomeController {
      */
     @GetMapping("/scraping")
     public String scraping() {
-        return "scraping.html";
+        return "redirect:/scraping.html";
     }
     
     /**
@@ -39,7 +39,7 @@ public class HomeController {
      */
     @GetMapping("/database")
     public String database() {
-        return "database.html";
+        return "redirect:/database.html";
     }
     
     /**
@@ -47,6 +47,6 @@ public class HomeController {
      */
     @GetMapping("/logs")
     public String logs() {
-        return "logs.html";
+        return "redirect:/logs.html";
     }
 }

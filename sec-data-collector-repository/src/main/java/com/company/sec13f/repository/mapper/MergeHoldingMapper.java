@@ -1,6 +1,7 @@
 package com.company.sec13f.repository.mapper;
 
 import com.company.sec13f.repository.entity.MergeHolding;
+import com.company.sec13f.repository.param.MergeHoldingsQueryParam;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -73,4 +74,11 @@ public interface MergeHoldingMapper {
      * @return 是否存在
      */
     boolean existsByFilingIdAndCusip(@Param("filingId") Long filingId, @Param("cusip") String cusip);
+    
+    /**
+     * 根据查询参数筛选合并持仓记录（使用动态SQL）
+     * @param queryParam 查询参数对象
+     * @return 合并持仓记录列表
+     */
+    List<MergeHolding> selectByQueryParam(@Param("param") MergeHoldingsQueryParam queryParam);
 }

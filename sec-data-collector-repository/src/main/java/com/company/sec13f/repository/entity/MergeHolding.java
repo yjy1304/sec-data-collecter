@@ -14,6 +14,7 @@ public class MergeHolding {
     private Long filingId;
     private String cik;
     private String companyName;
+    private String reportPeriod;
     private String nameOfIssuer;
     private String cusip;
     private BigDecimal value;
@@ -25,11 +26,12 @@ public class MergeHolding {
     public MergeHolding() {}
     
     public MergeHolding(Long holdingId, Long filingId, String cik, String companyName, 
-                       String nameOfIssuer, String cusip, BigDecimal value, Long shares) {
+                       String reportPeriod, String nameOfIssuer, String cusip, BigDecimal value, Long shares) {
         this.holdingId = holdingId;
         this.filingId = filingId;
         this.cik = cik;
         this.companyName = companyName;
+        this.reportPeriod = reportPeriod;
         this.nameOfIssuer = nameOfIssuer;
         this.cusip = cusip;
         this.value = value;
@@ -75,6 +77,14 @@ public class MergeHolding {
     
     public void setCompanyName(String companyName) {
         this.companyName = companyName;
+    }
+    
+    public String getReportPeriod() {
+        return reportPeriod;
+    }
+    
+    public void setReportPeriod(String reportPeriod) {
+        this.reportPeriod = reportPeriod;
     }
     
     public String getNameOfIssuer() {
@@ -133,6 +143,7 @@ public class MergeHolding {
                 ", filingId=" + filingId +
                 ", cik='" + cik + '\'' +
                 ", companyName='" + companyName + '\'' +
+                ", reportPeriod='" + reportPeriod + '\'' +
                 ", nameOfIssuer='" + nameOfIssuer + '\'' +
                 ", cusip='" + cusip + '\'' +
                 ", value=" + value +
